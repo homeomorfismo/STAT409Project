@@ -1,13 +1,12 @@
-"""
-Define the geometry of the organ pipes.
-All pipes have a PML subdomain.
+"""Geometry for the organ pipes.
+
+Define the geometry of the organ pipes. All pipes have a PML subdomain.
 """
 
 from __future__ import annotations
 from typing import Dict, Any, Union
 import netgen.occ as occ
 import ngsolve as ng
-import numpy as np
 
 # type alias
 CoorDict = Dict[str, Union[tuple[float, float, float], float]]
