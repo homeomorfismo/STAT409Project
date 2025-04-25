@@ -140,7 +140,10 @@ def square_pipe(
     pml_box = occ.Box(occ.Pnt(*coord["ipml1"]), occ.Pnt(*coord["ipml2"]))
     outer_pml_box = occ.Box(occ.Pnt(*coord["opml1"]), occ.Pnt(*coord["opml2"]))
     toe = occ.Cylinder(
-        occ.Pnt(*coord["toe_co"]), occ.X, r=coord["toe_r"], h=coord["toe_h"],
+        occ.Pnt(*coord["toe_co"]),
+        occ.X,
+        r=coord["toe_r"],
+        h=coord["toe_h"],
     )
 
     outer_pml_box.bc("dirichlet")
@@ -155,6 +158,7 @@ def square_pipe(
 
     geo = occ.OCCGeometry(occ.Glue([pml_region, air_region, box]))
     return geo
+
 
 if __name__ == "__main__":
     # Example usage
