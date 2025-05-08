@@ -1,7 +1,7 @@
 """DNNPype/model.py: DNN models for pipe modeling."""
 
 from __future__ import annotations
-from typing import List
+from typing import Optional
 
 import jax
 import jax.numpy as jnp
