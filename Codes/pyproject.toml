@@ -12,6 +12,9 @@ dependencies = [
     "jax",
     "flax",
     "optax",
+    "sounddevice",
+    "rich",
+    "scipy",
 ]
 
 [project.optional-dependencies]
@@ -19,6 +22,9 @@ dev = [
     "pytest",
     "pytest-cov",
 ]
+
+[project.scripts]
+classify_samples = "dnnpype.appSound:main"
 
 [build-system]
 requires = ["hatchling"]

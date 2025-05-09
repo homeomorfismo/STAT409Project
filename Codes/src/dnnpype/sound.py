@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import jax
 import numpy as np
 import scipy.io.wavfile as wav
 
@@ -22,7 +21,7 @@ def sound_from_partials(
     Inputs
     ------
     partials: numpy.ndarray
-        The partials to generate sound from.
+        The partials (distribution) to generate sound from.
     base_frequency: float
         The base frequency of the sound.
     samplerate: int
