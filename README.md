@@ -9,12 +9,8 @@ This is a repository for the Data Science Practicum course at Portland State Uni
 
 **Must email both instructors for all __client-team__ communications.**
 
-## Interview 09May25
-> [!NOTE]
-> [Begin, Intro to Hai solution](https://youtu.be/6lOHq-iB0f4)
+## Interview: Friday, May 9th, 2025
 
-> [!NOTE]
-> [Mid Section](https://youtu.be/_AmhKu5w7Ig)
-
-> [!NOTE]
-> [Graph and Formular](https://youtu.be/Oep6UKihY_I)
+- [Video 1: Begin, Intro to Hai's modification](https://youtu.be/6lOHq-iB0f4)
+- [Video 2: Mid-section](https://youtu.be/_AmhKu5w7Ig)
+- [Video 3: Graph and Formulae](https://youtu.be/Oep6UKihY_I)
