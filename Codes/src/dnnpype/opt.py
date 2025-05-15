@@ -24,11 +24,15 @@ def get_optimizer(
 
     Args:
         model (nnx.Module): The model to optimize.
-        optax_optimizer (optax.GradientTransformation): The Optax optimizer function.
-        **kwargs (Dict[str, float]): Additional parameters for the optimizer.
+        optax_optimizer (optax.GradientTransformation):
+            The Optax optimizer function.
+        **kwargs (Dict[str, float]):
+            Additional parameters for the optimizer.
 
     Returns:
-        Tuple[nnx.Optimizer, Callable]: A tuple containing the initialized optimizer and its update function.
+        Tuple[nnx.Optimizer, Callable]:
+            A tuple containing the initialized optimizer
+            and its update function.
     """
     if "learning_rate" not in kwargs:
         kwargs.setdefault("learning_rate", _DEFAULT_LR)
@@ -52,13 +56,19 @@ def train(
     Args:
         model (nnx.Module): The model to train.
         optimizer (nnx.Optimizer): The optimizer used for training.
-        metrics (nnx.MultiMetrics): Metrics object to track training performance.
-        train_data (jnp.ndarray): The training dataset as a jnp.ndarray.
-        expected_data (jnp.ndarray): The expected outputs as a jnp.ndarray.
+        metrics (nnx.MultiMetrics):
+            Metrics object to track training performance.
+        train_data (jnp.ndarray):
+            The training dataset as a jnp.ndarray.
+        expected_data (jnp.ndarray):
+            The expected outputs as a jnp.ndarray.
         param (jnp.ndarray): The parameters for the model.
-        loss_fn (Callable): The loss function to compute gradients.
-        epochs (int, optional): The number of epochs to train for. Defaults to 10.
-        batch_size (int, optional): The batch size for training. Defaults to 32.
+        loss_fn (Callable):
+            The loss function to compute gradients.
+        epochs (int, optional):
+            The number of epochs to train for. Defaults to 10.
+        batch_size (int, optional):
+            The batch size for training. Defaults to 32.
     """
     num_samples = train_data.shape[0]
     num_batches = num_samples // batch_size
@@ -94,9 +104,12 @@ def evaluate(
 
     Args:
         model (nnx.Module): The model to evaluate.
-        metrics (nnx.MultiMetrics): Metrics object to track evaluation performance.
-        eval_dataset (Dict[str, jnp.ndarray]): The evaluation dataset as a dictionary of features and labels.
-        batch_size (int, optional): The batch size for evaluation. Defaults to 32.
+        metrics (nnx.MultiMetrics):
+            Metrics object to track evaluation performance.
+        eval_dataset (Dict[str, jnp.ndarray]):
+            The evaluation dataset as a dictionary of features and labels.
+        batch_size (int, optional):
+            The batch size for evaluation. Defaults to 32.
     """
     num_samples = eval_dataset["data"].shape[0]
     num_batches = num_samples // batch_size

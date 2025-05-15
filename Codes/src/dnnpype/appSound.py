@@ -93,7 +93,8 @@ def _argparse() -> argparse.Namespace:
     )
     _str_out: str = (
         "Output CSV file name (without .csv extension)."
-        " If not provided, the name will be generated from previous arguments."
+        " If not provided, the name will be generated "
+        "from previous arguments."
     )
     parser.add_argument(
         "--output",
@@ -348,7 +349,11 @@ def main() -> None:
     if args.save_samples:
 
         def _get_name(i):
-            return f"sample{i}_{args.frequency}Hz_{args.duration}s_{args.samplerate}Hz"
+            _str: str = (
+                f"sample{i}_{args.frequency}Hz_{args.duration}s_"
+                f"{args.samplerate}Hz"
+            )
+            return _str.replace(".", "_")
 
         def _save_file(x, i):
             return sound.save_file(

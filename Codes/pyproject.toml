@@ -39,7 +39,7 @@ line-length = 79
 
 [tool.ruff]
 line-length = 79
-select = ["E", "F", "W", "I"]
+lint.select = ["E", "F", "W", "I"]
 
 [tool.ruff.format]
 quote-style = "double"

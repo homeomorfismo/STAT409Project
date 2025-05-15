@@ -93,7 +93,8 @@ def _print_args(
         # f"[bold]\tLoad: [/bold] {args.load}\n"
         f"[bold]\tNumber of hidden layers: [/bold] {args.n_hidden}\n"
         f"[bold]\tNumber of hidden units: [/bold] {args.dim_hidden}\n"
-        f"[bold blue]===========================================\n\n[/bold blue]"
+        f"[bold blue]=======================[/bold blue]"
+        f"[bold blue]====================\n\n[/bold blue]"
     )
 
 

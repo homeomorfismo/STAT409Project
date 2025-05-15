@@ -16,9 +16,25 @@ class SmallDNN(nnx.Module):
     """Small DNN for pipe modeling.
 
     This model takes:
-        - isBourdon, flueDepth, frequency, cutUpHeight, diameterToe, acousticIntensity
+        - isBourdon: int
+            Indicates if the pipe is a Bourdon pipe (1) or not (0).
+        - flueDepth: float
+            Depth of the flue in mm.
+        - frequency: float
+            Frequency of the fundamental mode in Hz.
+        - cutUpHeight: float
+            Height of the cut-up in mm.
+        - diameterToe: float
+            Diameter of the toe in mm.
+        - acousticIntensity: float
+            Acoustic intensity in dB.
     and returns:
-        - isingNumber, partial1, ..., partial8
+        - isingNumber: float
+            Ising number.
+        - partial<N>: float
+            Partial derivatives of the ising number with respect
+            to the input parameters.
+            N = 1, ..., 8
     """
 
     def __init__(
