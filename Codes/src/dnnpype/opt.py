@@ -84,13 +84,13 @@ def train(
 
             grad_fn = nnx.value_and_grad(loss_fn, has_aux=False, argnums=(0,))
             loss, grads = grad_fn(model, batch, expected, param)
-            # metrics.update(loss=loss, logits=logits, labels=expected)
+            metrics.update(batch, expected)
             optimizer.update(grads[0])
 
         # Compute and print epoch metrics
-        # epoch_metrics = metrics.compute()
-        # print(f"Epoch {epoch + 1} Metrics: {epoch_metrics}")
-        # metrics.reset()  # Reset metrics for the next epoch
+        epoch_metrics = metrics.compute()
+        print(f"Epoch {epoch + 1} Metrics: {epoch_metrics}")
+        metrics.reset()  # Reset metrics for the next epoch
 
 
 def evaluate(

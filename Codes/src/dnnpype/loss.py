@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 import flax.nnx as nnx
 import jax
@@ -65,20 +65,24 @@ def _logPartials(freq: jnp.ndarray, theta: jnp.ndarray) -> jnp.ndarray:
 class ExponentialPartialsMetric(nnx.metrics.Metric):
     """Metric for exponential partials."""
 
-    def __init__(self):
+    def __init__(self, theta: Optional[jnp.ndarray] = None):
         self.predicted: List[jnp.ndarray] = []
         self.target: List[jnp.ndarray] = []
+        self._theta = theta
 
     def update(
         self,
         x_pipe: jnp.ndarray,
         predicted_output: jnp.ndarray,
-        shape_params: jnp.ndarray,
+        shape_params: Optional[jnp.ndarray] = None,
     ):
         """Store predicted and ideal exponential partials."""
         # Extract frequency (third part) from data; shape (batch, 1)
         _, _, frequency, _, _, _ = jnp.split(x_pipe, 6, axis=1)
-        ideal = _exponentialPartials(frequency, shape_params)
+        _shape_params = (
+            shape_params if shape_params is not None else self._theta
+        )
+        ideal = _exponentialPartials(frequency, _shape_params)
         if predicted_output.shape[1] == 9:
             _, pred = jnp.split(predicted_output, [1], axis=1)
         elif predicted_output.shape[1] == 8:
@@ -106,19 +110,23 @@ class ExponentialPartialsMetric(nnx.metrics.Metric):
 class LinearPartialsMetric(nnx.metrics.Metric):
     """Metric for linear partials."""
 
-    def __init__(self):
+    def __init__(self, theta: Optional[jnp.ndarray] = None):
         self.predicted: List[jnp.ndarray] = []
         self.target: List[jnp.ndarray] = []
+        self._theta = theta
 
     def update(
         self,
         x_pipe: jnp.ndarray,
         predicted_output: jnp.ndarray,
-        shape_params: jnp.ndarray,
+        shape_params: Optional[jnp.ndarray] = None,
     ):
         """Store predicted and ideal linear partials."""
         _, _, frequency, _, _, _ = jnp.split(x_pipe, 6, axis=1)
-        ideal = _linearPartials(frequency, shape_params)
+        _shape_params = (
+            shape_params if shape_params is not None else self._theta
+        )
+        ideal = _linearPartials(frequency, _shape_params)
         if predicted_output.shape[1] == 9:
             _, pred = jnp.split(predicted_output, [1], axis=1)
         elif predicted_output.shape[1] == 8:
@@ -145,19 +153,23 @@ class LinearPartialsMetric(nnx.metrics.Metric):
 class LogPartialsMetric(nnx.metrics.Metric):
     """Metric for log partials."""
 
-    def __init__(self):
+    def __init__(self, theta: Optional[jnp.ndarray] = None):
         self.predicted: List[jnp.ndarray] = []
         self.target: List[jnp.ndarray] = []
+        self._theta = theta
 
     def update(
         self,
         x_pipe: jnp.ndarray,
         predicted_output: jnp.ndarray,
-        shape_params: jnp.ndarray,
+        shape_params: Optional[jnp.ndarray] = None,
     ):
         """Store predicted and ideal log partials."""
         _, _, frequency, _, _, _ = jnp.split(x_pipe, 6, axis=1)
-        ideal = _logPartials(frequency, shape_params)
+        _shape_params = (
+            shape_params if shape_params is not None else self._theta
+        )
+        ideal = _logPartials(frequency, _shape_params)
         if predicted_output.shape[1] == 9:
             _, pred = jnp.split(predicted_output, [1], axis=1)
         elif predicted_output.shape[1] == 8:

@@ -6,6 +6,7 @@ import argparse
 from typing import Tuple
 
 import flax.nnx as nnx
+import jax
 import jax.numpy as jnp
 import loss
 import model
@@ -139,6 +140,20 @@ def main() -> None:
     inputs, outputs = _load_data()
     theta = jnp.array([0.5, 0.5])  # pressure and density of air
 
+    # Split into training and test sets
+    ## Randomly shuffle the data
+    rng = jax.random.PRNGKey(args.seed)
+    rng, rngs = jax.random.split(rng)
+    perm = jax.random.permutation(rngs, inputs.shape[0])
+    inputs = inputs[perm]
+    outputs = outputs[perm]
+    # 80% training, 20% test
+    n_train = int(0.8 * inputs.shape[0])
+    train_inputs = inputs[:n_train]
+    train_outputs = outputs[:n_train]
+    test_inputs = inputs[n_train:]
+    test_outputs = outputs[n_train:]
+
     # Set up the model
     rngs = nnx.Rngs(args.seed)
     dnn = model.SmallDNN(
@@ -158,10 +173,8 @@ def main() -> None:
     loss_fn = loss.refLoss
 
     # Set up metrics
-    metrics = nnx.MultiMetric(
-        accuracy=nnx.metrics.Accuracy(),
-        loss=nnx.metrics.Average(),
-    )
+    shape_param = jnp.array([1.0, 1.0])  # slope, intercept
+    metrics = loss.LinearPartialsMetric(shape_param)
 
     # Train the model
     if args.train:
@@ -169,13 +182,20 @@ def main() -> None:
             model=dnn,
             optimizer=optimizer,
             metrics=metrics,
-            train_data=inputs,
-            expected_data=outputs,
+            train_data=train_inputs,
+            expected_data=train_outputs,
             param=theta,
             loss_fn=loss_fn,
             epochs=_n_epochs,
             batch_size=_n_batches,
         )
+
+    # Verify the model
+    results = dnn(test_inputs)
+    isingNumber = loss._isingNumber(test_inputs, theta)
+    # Stack the isingNumber and the outputs
+    _test_outputs = jnp.hstack((isingNumber, test_outputs))
+    print(f"Results: {jnp.linalg.norm(results - _test_outputs)}")
 
 
 if __name__ == "__main__":
