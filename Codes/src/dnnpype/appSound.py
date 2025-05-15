@@ -165,7 +165,10 @@ def _exponentialPartials(freq: float, theta: np.ndarray) -> np.ndarray:
     """Compute exponential partials."""
     slicing_idx: list[int] = [1]
     mult, shift = np.split(theta, slicing_idx, axis=0)
-    _fun = lambda x: (np.exp(8 - x) + shift[0]) * np.exp(freq * np.log(mult))
+
+    def _fun(x):
+        return (np.exp(8 - x) + shift[0]) * np.exp(freq * np.log(mult))
+
     partials = np.array([_fun(i) for i in range(1, 9)]).flatten()
     partials = partials / np.max(partials, axis=0, keepdims=True)
     return partials
@@ -175,7 +178,10 @@ def _linearPartials(freq: float, theta: np.ndarray) -> np.ndarray:
     """Compute linear (relu) partials."""
     slicing_idx: list[int] = [1]
     mult, shift = np.split(theta, slicing_idx, axis=0)
-    _fun = lambda x: mult * (8 * freq - freq * x) + shift[0]
+
+    def _fun(x):
+        return mult * (8 * freq - freq * x) + shift[0]
+
     partials = np.array([_fun(i) for i in range(1, 9)]).flatten()
     partials = partials / np.max(partials, axis=0, keepdims=True)
     return partials
@@ -185,7 +191,10 @@ def _logPartials(freq: float, theta: np.ndarray) -> np.ndarray:
     """Compute log partials."""
     slicing_idx: list[int] = [1]
     mult, shift = np.split(theta, slicing_idx, axis=0)
-    _fun = lambda x: np.log(9 - x) * (1 + shift[0]) + np.log(freq * mult)
+
+    def _fun(x):
+        return np.log(9 - x) * (1 + shift[0]) + np.log(freq * mult)
+
     partials = np.array([_fun(i) for i in range(1, 9)]).flatten()
     partials = partials / np.max(partials, axis=0, keepdims=True)
     return partials
@@ -337,16 +346,21 @@ def main() -> None:
     np.random.shuffle(partials)
 
     if args.save_samples:
-        _get_name = (
-            lambda i: f"sample{i}_{args.frequency}Hz_{args.duration}s_{args.samplerate}Hz"
-        )
-        _save_file = lambda x, i: sound.save_file(
-            sound=x,
-            filename=os.path.join(args.output_dir, f"{_get_name(i)}.wav"),
-            samplerate=args.samplerate,
-        )
+
+        def _get_name(i):
+            return f"sample{i}_{args.frequency}Hz_{args.duration}s_{args.samplerate}Hz"
+
+        def _save_file(x, i):
+            return sound.save_file(
+                sound=x,
+                filename=os.path.join(args.output_dir, f"{_get_name(i)}.wav"),
+                samplerate=args.samplerate,
+            )
+
     else:
-        _save_file = lambda x, i: None
+
+        def _save_file(x, i):
+            return None
 
     # Create a dictionary to store the ratings
     output_dict = {
