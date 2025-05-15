@@ -36,3 +36,16 @@ packages = ["src/dnnpype"]
 
 [tool.black]
 line-length = 79
+
+[tool.ruff]
+line-length = 79
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+

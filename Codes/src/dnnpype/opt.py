@@ -1,10 +1,11 @@
 """DNNPype/opt.py: Wrapper loops and utilities for training and evaluation."""
 
 from __future__ import annotations
-from typing import Callable, Dict, Tuple, Any
 
-import jax.numpy as jnp
+from typing import Any, Callable, Dict, Tuple
+
 import flax.nnx as nnx
+import jax.numpy as jnp
 import optax
 
 # import model

@@ -1,20 +1,18 @@
 """DNNPype/appDNN.py: Wrapper for DNNPype to run the model."""
 
 from __future__ import annotations
-from typing import Tuple
 
 import argparse
-import rich as r
-import polars as pl
+from typing import Tuple
 
-import jax.numpy as jnp
 import flax.nnx as nnx
-import optax
-
-import model
+import jax.numpy as jnp
 import loss
+import model
 import opt
-
+import optax
+import polars as pl
+import rich as r
 
 ###############################################################################
 # Defaults and constants # TODO: Use a toml

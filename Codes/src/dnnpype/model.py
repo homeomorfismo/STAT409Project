@@ -1,12 +1,12 @@
 """DNNPype/model.py: DNN models for pipe modeling."""
 
 from __future__ import annotations
+
 from typing import Optional
 
+import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
-import flax.nnx as nnx
-
 
 _n_inputs: int = 6
 _n_outputs: int = 9

@@ -1,19 +1,20 @@
 """DNNPype/appSound.py: Driver for sound synthesis with Scipy."""
 
 from __future__ import annotations
-from typing import List, Callable
-from enum import Enum
 
-import os
 import argparse
-import rich as r
+import os
+from enum import Enum
+from typing import Callable, List
+
 import numpy as np
-import sounddevice as sd
-import polars as pl
 import plotly.graph_objects as go
+import polars as pl
+import rich as r
 
 # local imports
 import sound as sound
+import sounddevice as sd
 
 
 ###############################################################################
