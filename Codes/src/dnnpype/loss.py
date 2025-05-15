@@ -143,7 +143,7 @@ def refLoss(
         jnp.square(computedIsingNumber - refIsingNumber)
         + jnp.sum(jnp.square(computedPartials - refPartials), axis=1)
     )
-    return loss, computedResults
+    return loss
 
 
 ####################################################################################

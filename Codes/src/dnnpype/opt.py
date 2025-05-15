@@ -71,12 +71,10 @@ def train(
             batch = train_data[start_idx:end_idx]
             expected = expected_data[start_idx:end_idx]
 
-            # Compute gradients and update model
-            grad = nnx.value_and_grad(loss_fn, has_aux=True, argnums=(0,))
-            (loss, logits), grads = grad(model, batch, expected, param)
+            grad_fn = nnx.value_and_grad(loss_fn, has_aux=False, argnums=(0,))
+            loss, grads = grad_fn(model, batch, expected, param)
             # metrics.update(loss=loss, logits=logits, labels=expected)
-            print(f"shape: {batch.shape}, loss: {loss}, logits: {logits}, grads: {grads}")
-            optimizer.update(grads, model)
+            optimizer.update(grads[0])
 
         # Compute and print epoch metrics
         # epoch_metrics = metrics.compute()

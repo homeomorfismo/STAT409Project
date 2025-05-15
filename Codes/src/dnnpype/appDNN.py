@@ -3,7 +3,6 @@
 from __future__ import annotations
 from typing import Tuple
 
-import os
 import argparse
 import rich as r
 import polars as pl
@@ -11,7 +10,6 @@ import polars as pl
 import jax.numpy as jnp
 import flax.nnx as nnx
 import optax
-from functools import partial
 
 import model
 import loss
@@ -179,9 +177,6 @@ def main() -> None:
             epochs=_n_epochs,
             batch_size=_n_batches,
         )
-
-
-
 
 
 if __name__ == "__main__":
