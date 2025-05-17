@@ -753,9 +753,6 @@ def main():
             rich_console.print(
                 "[bold yellow]Evaluating after training...[/bold yellow]"
             )
-            # CRITICAL: 'evaluate' internally calls loss_fn with 5 args.
-            # This will FAIL if 'reference_loss' (3-arg) is passed.
-            # 'evaluate' function needs its loss_fn call changed to 3 args.
             evaluate(
                 dnn=dnn_model,
                 loss_fn=reference_loss,  # This is a 3-argument function
