@@ -20,7 +20,7 @@ import rich.console as console
 # Number of inputs, hidden layers, and outputs
 _n_inputs: int = 6
 _n_hidden: int = 2
-_dim_hidden: int = 12
+_dim_hidden: int = 10
 _n_outputs: int = 9
 # Number of environment parameters and shape parameters
 _n_env_parameters: int = 2
@@ -29,7 +29,9 @@ _n_shape_parameters: int = 2
 _n_epochs: int = 10
 _n_batch_size: int = 32
 # Default environment parameters
-_default_env_parameters: jnp.ndarray = jnp.array([1.0, 1.0])
+_default_env_parameters: jnp.ndarray = jnp.array(
+    [0.7354785, 1.185]
+)  # Pressure (kPa) and density (kg/m^3)
 _default_shape_parameters: jnp.ndarray = jnp.array([1.0, 1.0])
 
 
@@ -132,6 +134,7 @@ class SmallDNN(nnx.Module):
         # Output layers
         y_partials = self.outputLayerPartials(x)
         y_partials = jax.nn.softmax(y_partials, axis=-1)
+        y_partials = y_partials / jnp.max(y_partials, axis=-1, keepdims=True)
 
         y_ising = self.outputLayerIsing(x)
         y_ising = jax.nn.softplus(y_ising)
@@ -621,7 +624,7 @@ def get_args():
     parser.add_argument(
         "--data_path",
         type=str,
-        default="../../../Data/allOrgan.csv",  # Default path from your load_data
+        default="../../../Data/allOrgan.csv",
         help="Path to the CSV data file.",
     )
     parser.add_argument(
@@ -727,14 +730,12 @@ def main():
     if args.mode == "train":
         if train_input.shape[0] == 0:
             rich_console.print(
-                "[bold red]Training data is empty. Skipping training.[/bold red]"
+                "[bold red]Training data is empty. Skipping...[/bold red]"
             )
         else:
             rich_console.print(
                 "[bold yellow]Starting Training...[/bold yellow]"
             )
-            # Note: The 'loss_fn' type hint in 'train' is 5-arg, but 'reference_loss' is 3-arg.
-            # The internal call in 'train' is (dnn, x_batch, y_batch), which is correct for 'reference_loss'.
             train(
                 dnn=dnn_model,
                 loss_fn=reference_loss,  # This is a 3-argument function
@@ -761,26 +762,27 @@ def main():
                 metrics=metrics_computer,
                 eval_data=eval_input,
                 expected_eval_data=eval_expected,
-                env_parameters_eval=eval_env_params,  # Passed to satisfy signature
-                shape_parameters_eval=eval_shape_params,  # Passed to satisfy signature
+                env_parameters_eval=eval_env_params,
+                shape_parameters_eval=eval_shape_params,
                 batch_size=args.batch_size,
             )
         elif (
             args.mode == "train"
         ):  # Only print if mode was train and no eval data
             rich_console.print(
-                "[yellow]No evaluation data to evaluate after training.[/yellow]"
+                "[yellow]No evaluation data to evaluate.[/yellow]"
             )
 
     elif args.mode == "evaluate":
         # TODO: Implement model loading if args.load_path is provided
         # if not args.load_path:
-        # rich_console.print("[bold red]Error: Evaluation mode requires a model to load via --load_path.[/bold red]")
+        # rich_console.print(TODO)
         # return
 
         if eval_input.shape[0] == 0:
             rich_console.print(
-                "[bold red]Evaluation data is empty. Skipping evaluation.[/bold red]"
+                "[bold red]Evaluation data is empty. [/bold red]"
+                "[bold red] Skipping evaluation.[/bold red]"
             )
         else:
             rich_console.print(
@@ -792,8 +794,8 @@ def main():
                 metrics=metrics_computer,
                 eval_data=eval_input,
                 expected_eval_data=eval_expected,
-                env_parameters_eval=eval_env_params,  # Passed to satisfy signature
-                shape_parameters_eval=eval_shape_params,  # Passed to satisfy signature
+                env_parameters_eval=eval_env_params,
+                shape_parameters_eval=eval_shape_params,
                 batch_size=args.batch_size,
             )
 
