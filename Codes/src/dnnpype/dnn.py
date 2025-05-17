@@ -19,7 +19,7 @@ import rich.console as console
 ###############################################################################
 # Number of inputs, hidden layers, and outputs
 _n_inputs: int = 6
-_n_hidden: int = 2
+_n_hidden: int = 10
 _dim_hidden: int = 10
 _n_outputs: int = 9
 # Number of environment parameters and shape parameters
@@ -121,19 +121,19 @@ class SmallDNN(nnx.Module):
         """
         # Input layer
         x = self.inputLayer(x)
-        x = nnx.relu(x)
+        x = nnx.tanh(x)
 
         # Hidden layers
         for hiddenLayer in self.hiddenLayers:
             x = hiddenLayer(x)
-            x = nnx.relu(x)
+            x = nnx.tanh(x)
 
         # Normalization layer
         x = self.normalizationLayer(x)
 
         # Output layers
         y_partials = self.outputLayerPartials(x)
-        y_partials = jax.nn.softmax(y_partials, axis=-1)
+        y_partials = nnx.softmax(y_partials, axis=-1)
         y_partials = y_partials / jnp.max(y_partials, axis=-1, keepdims=True)
 
         y_ising = self.outputLayerIsing(x)
@@ -346,6 +346,7 @@ def reference_loss(
     dnn: nnx.Module,
     input_data: jnp.ndarray,
     output_data: jnp.ndarray,
+    regularization: float = 0.1,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Compute the loss function for the DNN.
 
@@ -355,6 +356,10 @@ def reference_loss(
         DNN model.
     input_data: jnp.ndarray
         Input data of shape (batch_size, _n_inputs).
+    output_data: jnp.ndarray
+        Output data of shape (batch_size, _n_outputs).
+    regularization: float
+        Regularization parameter for L2 regularization.
 
     Outputs
     =======
@@ -373,7 +378,16 @@ def reference_loss(
     loss_partials = jnp.sum(
         jnp.square(predicted_partials - ref_partials), axis=1, keepdims=True
     )
-    return jnp.mean(loss_ising + loss_partials), predicted_data
+
+    reg_weights = jnp.sum(
+        jnp.square(optax.global_norm(nnx.state(dnn, nnx.Param)))
+    )
+    _reg = regularization * regularization
+
+    loss = jnp.mean(loss_ising + loss_partials)
+    loss += _reg * reg_weights
+
+    return loss, predicted_data
 
 
 ################################################################################
@@ -662,11 +676,32 @@ def main():
     # 2. TODO: Implement model loading if args.load_path is provided
 
     # 3. Initialize Optimizer
-    optax_optimizer = optax.adam(learning_rate=args.learning_rate)
+    optax_optimizer = optax.amsgrad(
+        learning_rate=args.learning_rate,
+        eps_root=1e-8,
+    )
+    # optax_optimizer = optax.sgd(
+    #     learning_rate=args.learning_rate,
+    #     momentum=0.9,
+    # )
+    # optax_optimizer = optax.adam(learning_rate=args.learning_rate)
+    # optax_optimizer = optax.lbfgs(
+    #     learning_rate=args.learning_rate,
+    #     memory_size=20,
+    #     linesearch=optax.scale_by_adam(b1=0.89, b2=0.99, eps_root=1e-8),
+    # )
     optimizer = nnx.Optimizer(dnn_model, optax_optimizer)
 
-    # 4. Load Data
+    # 4. Load Data (Ising numbers pre-computed)
     all_input_data, all_expected_outputs = load_data(str_path=args.data_path)
+
+    # 4.2 Print Ising numbers from the loaded data
+    ising_numbers = all_expected_outputs[:, 0:1]
+    rich_console.print(
+        f"[bold green]Ising numbers from loaded data:[/bold green]\n"
+        f"{ising_numbers}"
+    )
+    rich_console.input("[bold yellow]Press Enter to continue...[/bold yellow]")
 
     if all_input_data is None or all_expected_outputs is None:
         rich_console.print(
