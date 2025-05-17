@@ -33,6 +33,8 @@ _default_env_parameters: jnp.ndarray = jnp.array(
     [0.7354785, 1.185]
 )  # Pressure (kPa) and density (kg/m^3)
 _default_shape_parameters: jnp.ndarray = jnp.array([1.0, 1.0])
+# Standard deviation for normal distribution
+_std_dev: float = 1.0
 
 
 ###############################################################################
@@ -72,36 +74,44 @@ class SmallDNN(nnx.Module):
         *,
         rngs: nnx.Rngs,
     ):
+        self.normalizationLayer = nnx.RMSNorm(
+            num_features=_n_inputs,
+            rngs=rngs,
+        )
         self.inputLayer = nnx.Linear(
             _n_inputs,
             dim_hidden,
             kernel_init=nnx.initializers.glorot_uniform(),
+            bias_init=nnx.initializers.normal(_std_dev),
             rngs=rngs,
+            use_bias=True,
         )
         self.hiddenLayers = [
             nnx.Linear(
                 dim_hidden,
                 dim_hidden,
                 kernel_init=nnx.initializers.glorot_uniform(),
+                bias_init=nnx.initializers.normal(_std_dev),
                 rngs=rngs,
+                use_bias=True,
             )
             for _ in range(n_hidden)
         ]
-        self.normalizationLayer = nnx.RMSNorm(
-            num_features=dim_hidden,
-            rngs=rngs,
-        )
         self.outputLayerPartials = nnx.Linear(
             dim_hidden,
             _n_outputs - 1,
             kernel_init=nnx.initializers.glorot_uniform(),
+            bias_init=nnx.initializers.normal(_std_dev),
             rngs=rngs,
+            use_bias=True,
         )
         self.outputLayerIsing = nnx.Linear(
             dim_hidden,
             1,
             kernel_init=nnx.initializers.glorot_uniform(),
+            bias_init=nnx.initializers.normal(_std_dev),
             rngs=rngs,
+            use_bias=True,
         )
 
     def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
@@ -119,6 +129,9 @@ class SmallDNN(nnx.Module):
         y: jnp.ndarray
             Output data of shape (batch_size, _n_outputs).
         """
+        # Normalization layer
+        x = self.normalizationLayer(x)
+
         # Input layer
         x = self.inputLayer(x)
         x = nnx.tanh(x)
@@ -127,9 +140,6 @@ class SmallDNN(nnx.Module):
         for hiddenLayer in self.hiddenLayers:
             x = hiddenLayer(x)
             x = nnx.tanh(x)
-
-        # Normalization layer
-        x = self.normalizationLayer(x)
 
         # Output layers
         y_partials = self.outputLayerPartials(x)
@@ -200,10 +210,11 @@ def get_linear_partial_dist(
     slope = shape_parameters[:, 0:1]
     intercept = shape_parameters[:, 1:2]
 
-    harmonic_multipliers = jnp.arange(1, _n_outputs)  # (8,) -> 1 to 8
+    harmonic_multipliers = jnp.arange(1, _n_outputs, dtype=jnp.float32)
     partial_frequencies = frequency * harmonic_multipliers
+    batch_intercept = (intercept * _n_outputs) * frequency
 
-    opt_partials = partial_frequencies * slope + intercept
+    opt_partials = slope * (batch_intercept - partial_frequencies) + intercept
 
     max_partials = jnp.max(opt_partials, axis=1, keepdims=True)
     opt_partials = opt_partials / jnp.where(
@@ -346,7 +357,7 @@ def reference_loss(
     dnn: nnx.Module,
     input_data: jnp.ndarray,
     output_data: jnp.ndarray,
-    regularization: float = 0.1,
+    regularization: float = 1e-4,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Compute the loss function for the DNN.
 
@@ -375,17 +386,16 @@ def reference_loss(
     ref_partials = output_data[:, 1:]
 
     loss_ising = jnp.square(predicted_ising - ref_ising)
-    loss_partials = jnp.sum(
+    loss_partials = jnp.mean(
         jnp.square(predicted_partials - ref_partials), axis=1, keepdims=True
     )
 
     reg_weights = jnp.sum(
         jnp.square(optax.global_norm(nnx.state(dnn, nnx.Param)))
     )
-    _reg = regularization * regularization
 
     loss = jnp.mean(loss_ising + loss_partials)
-    loss += _reg * reg_weights
+    loss += regularization * reg_weights
 
     return loss, predicted_data
 
@@ -554,6 +564,17 @@ def evaluate(
         f"  [bold]Metrics:[/bold] {eval_metrics_computed}\n"
     )
 
+    # Print the Ising numbers from the evaluation data
+    ising_numbers = expected_eval_data[:, 0:1]
+    r.print(
+        "[bold green]Ising numbers from evaluation data:[/bold green]\n"
+        f"{ising_numbers}"
+    )
+    r.print(
+        "[bold yellow]Ising numbers from the model:[/bold yellow]\n"
+        f"{predicted_data_batch[:, 0:1]}"
+    )
+
     return avg_loss_eval, eval_metrics_computed
 
 
@@ -676,8 +697,14 @@ def main():
     # 2. TODO: Implement model loading if args.load_path is provided
 
     # 3. Initialize Optimizer
+    scheduler = optax.cosine_decay_schedule(
+        init_value=args.learning_rate,
+        decay_steps=1000,
+        alpha=0.05,
+        exponent = 1.5,
+    )
     optax_optimizer = optax.amsgrad(
-        learning_rate=args.learning_rate,
+        learning_rate=scheduler,
         eps_root=1e-8,
     )
     # optax_optimizer = optax.sgd(
