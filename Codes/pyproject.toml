@@ -26,6 +26,7 @@ dev = [
 [project.scripts]
 classify_samples = "dnnpype.appSound:main"
 run_model = "dnnpype.appDNN:main"
+convert_units = "dnnpype.convert:main"
 
 [build-system]
 requires = ["hatchling"]
