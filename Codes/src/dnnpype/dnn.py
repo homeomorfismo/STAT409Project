@@ -598,11 +598,12 @@ def load_data(
         "diameterToe",
         "acousticIntensity",
     ]
+    # Outputs need to be divided by a 100
     output_cols = [f"partial{i}" for i in range(1, 9)]
     inputs = df.select(input_cols).to_numpy()
     outputs = df.select(output_cols).to_numpy()
     inputs = jnp.array(inputs)
-    outputs = jnp.array(outputs)
+    outputs = jnp.array(outputs) / 100.0
 
     # Compute the exact Ising number from inputs
     batch_env_parameters = jnp.tile(
