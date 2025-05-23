@@ -1,5 +1,16 @@
 """DNNPype/dnn.py: Rewriting of the DNN"""
 
+# Other observations
+# - On one hidden layer, it is optimal to consider 16-25 hidden units
+# - More than 2 hidden layers is not recommended
+# - Increasing the penalization to the Ising number loss function
+#   (i.e., _ising_attention) worsens the loss function, slightly improves
+#   the Ising number.
+# - The convex factor seems to help if larger than 0.5 and less than 1.0
+# - Standard deviation for bias initialization shold be below 0.4 and
+#   above 0.1
+# - Batch normalization is recommended, an alternative is to use RMSNorm
+
 from __future__ import annotations
 
 import argparse
@@ -19,8 +30,8 @@ import rich.console as console
 ###############################################################################
 # Number of inputs, hidden layers, and outputs
 _n_inputs: int = 6
-_n_hidden: int = 10
-_dim_hidden: int = 10
+_n_hidden: int = 2
+_dim_hidden: int = 16
 _n_outputs: int = 9
 # Number of environment parameters and shape parameters
 _n_env_parameters: int = 2
@@ -34,7 +45,15 @@ _default_env_parameters: jnp.ndarray = jnp.array(
 )  # Pressure (kPa) and density (kg/m^3)
 _default_shape_parameters: jnp.ndarray = jnp.array([1.0, 1.0])
 # Standard deviation for normal distribution
-_std_dev: float = 1.0
+_std_dev: float = 0.325
+# Weight for Ising number loss, greater than 1
+_ising_attention: float = 2.5
+# Cosine decay scheduler parameters
+_decay_steps_scheduler: int = 5
+_convex_factor: float = 0.85
+_power_exponent: float = 1.25
+# Non-zero division epsilon
+_epsilon: float = 1e-8
 
 
 ###############################################################################
@@ -74,8 +93,9 @@ class SmallDNN(nnx.Module):
         *,
         rngs: nnx.Rngs,
     ):
-        self.normalizationLayer = nnx.RMSNorm(
+        self.normalizationLayer = nnx.BatchNorm(
             num_features=_n_inputs,
+            epsilon=_epsilon,
             rngs=rngs,
         )
         self.inputLayer = nnx.Linear(
@@ -387,14 +407,16 @@ def reference_loss(
 
     loss_ising = jnp.square(predicted_ising - ref_ising)
     loss_partials = jnp.mean(
-        jnp.square(predicted_partials - ref_partials), axis=1, keepdims=True
+        jnp.square(predicted_partials - ref_partials),
+        axis=1,
+        keepdims=True,
     )
 
     reg_weights = jnp.sum(
         jnp.square(optax.global_norm(nnx.state(dnn, nnx.Param)))
     )
 
-    loss = jnp.mean(loss_ising + loss_partials)
+    loss = jnp.mean(_ising_attention * loss_ising + loss_partials)
     loss += regularization * reg_weights
 
     return loss, predicted_data
@@ -700,13 +722,13 @@ def main():
     # 3. Initialize Optimizer
     scheduler = optax.cosine_decay_schedule(
         init_value=args.learning_rate,
-        decay_steps=1000,
-        alpha=0.05,
-        exponent = 1.5,
+        decay_steps=_decay_steps_scheduler,
+        alpha=_convex_factor,
+        exponent=_power_exponent,
     )
     optax_optimizer = optax.amsgrad(
         learning_rate=scheduler,
-        eps_root=1e-8,
+        eps_root=_epsilon,
     )
     # optax_optimizer = optax.sgd(
     #     learning_rate=args.learning_rate,
