@@ -19,6 +19,7 @@ Other observations
 from __future__ import annotations
 
 import argparse
+import shutil
 from abc import ABC
 from typing import Any, Callable, Dict, Optional, Tuple
 
@@ -29,9 +30,8 @@ import numpy as np
 import optax
 import polars as pl
 import rich as r
-import rich.progress as progress
 import rich.console as console
-import shutil
+import rich.progress as progress
 
 ###############################################################################
 # Globals
@@ -50,7 +50,7 @@ _n_shape_parameters: int = 2
 _n_epochs: int = 10
 _n_batch_size: int = 32
 # Default environment parameters
-_default_env_parameters: jnp.ndarray = jnp.array(
+_air_params: jnp.ndarray = jnp.array(
     [0.7354785, 1.185]
 )  # Pressure (kPa) and density (kg/m^3)
 # Default shape parameters, these define a metric (partial distribution)
@@ -742,7 +742,7 @@ def print_table(
             f"\t[bold]Min:[/bold] {_partials_min[i-1]:.4f}\n"
         )
 
-    full_table_1 = r.table.Table(title=title+" (Part 1)")
+    full_table_1 = r.table.Table(title=title + " (Part 1)")
     full_table_1.add_column("I_e", justify="right", style="cyan")
     full_table_1.add_column("I_p", justify="right", style="green")
     full_table_1.add_column("|err(I)|", justify="right", style="red")
@@ -768,7 +768,7 @@ def print_table(
         full_table_1.add_row(*row)
     rich_console.print(full_table_1)
 
-    full_table_2 = r.table.Table(title=title+" (Part 2)")
+    full_table_2 = r.table.Table(title=title + " (Part 2)")
     full_table_2.add_column("I_e", justify="right", style="cyan")
     full_table_2.add_column("I_p", justify="right", style="green")
     full_table_2.add_column("|err(I)|", justify="right", style="red")
@@ -835,9 +835,7 @@ def load_data(
     outputs = jnp.array(outputs) / 100.0
 
     # Compute the exact Ising number from inputs
-    batch_env_parameters = jnp.tile(
-        _default_env_parameters, (inputs.shape[0], 1)
-    )
+    batch_env_parameters = jnp.tile(_air_params, (inputs.shape[0], 1))
     ising_number = get_exact_ising_number(
         inputs,
         batch_env_parameters,
@@ -913,8 +911,8 @@ def main():
     _temp_str: str = (
         f"[bold cyan]DNNPype ({args.mode} mode)[/bold cyan]\n"
         f"\t[bold red] Enviromental parameters:[/bold red]\n"
-        f"\t\t[bold] Air Pressure [kPa]: {_default_env_parameters[0]}[/bold]\n"
-        f"\t\t[bold] Air Density [kg/m^3]: {_default_env_parameters[1]}[/bold]\n"
+        f"\t\t[bold] Air Pressure [kPa]: {_air_params[0]}[/bold]\n"
+        f"\t\t[bold] Air Density [kg/m^3]: {_air_params[1]}[/bold]\n"
         f"\t[bold green] Meta-parameters:[/bold green]\n"
         f"\t\t[bold] Data Path: {args.data_path}[/bold]\n"
         f"\t\t[bold] Epochs: {args.epochs}[/bold]\n"
@@ -939,9 +937,7 @@ def main():
     rich_console.print("[bold yellow]=[/bold yellow]" * _cols)
     rich_console.print(_temp_str)
     rich_console.print("[bold yellow]=[/bold yellow]" * _cols)
-    rich_console.input(
-        "[bold yellow]Press Enter to continue...[/bold yellow]"
-    )
+    rich_console.input("[bold yellow]Press Enter to continue...[/bold yellow]")
 
     # 1. Initialize model
     rngs = nnx.Rngs(args.rng_seed)
@@ -1019,11 +1015,11 @@ def main():
     )
     rich_console.print(_temp_str)
 
-    jnp.tile(_default_env_parameters, (train_input.shape[0], 1))
+    jnp.tile(_air_params, (train_input.shape[0], 1))
     jnp.tile(_default_shape_parameters, (train_input.shape[0], 1))
 
     eval_env_params = (
-        jnp.tile(_default_env_parameters, (eval_input.shape[0], 1))
+        jnp.tile(_air_params, (eval_input.shape[0], 1))
         if eval_input.shape[0] > 0
         else jnp.empty((0, _n_env_parameters))
     )
