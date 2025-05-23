@@ -1,18 +1,20 @@
-"""DNNPype/dnn.py: Rewriting of the DNN"""
+"""DNNPype/dnn.py: Rewriting of the DNN
 
-# Other observations
-# - On one hidden layer, it is optimal to consider 16-25 hidden units
-# - More than 2 hidden layers is not recommended
-# - Increasing the penalization to the Ising number loss function
-#   (i.e., _ising_attention) worsens the loss function, slightly improves
-#   the Ising number.
-# - The convex factor seems to help if larger than 0.5 and less than 1.0
-# - Standard deviation for bias initialization shold be below 0.4 and
-#   above 0.1
-# - Batch normalization is recommended, an alternative is to use RMSNorm
-# - Clipping the gradients close to 1.0 is recommended
-# - Weights decay is recommended, between 1e-2 and 1e-4
-# - Current reference loss below 0.05 is successful
+Other observations
+==================
+- On one hidden layer, it is optimal to consider 16-25 hidden units
+- More than 2 hidden layers is not recommended
+- Increasing the penalization to the Ising number loss function
+  (i.e., _ising_attention) worsens the loss function, slightly improves
+  the Ising number.
+- The convex factor seems to help if larger than 0.5 and less than 1.0
+- Standard deviation for bias initialization shold be below 0.4 and
+  above 0.1
+- Batch normalization is recommended, an alternative is to use RMSNorm
+- Clipping the gradients close to 1.0 is recommended
+- Weights decay is recommended, between 1e-2 and 1e-4
+- Current reference loss below 0.05 is successful
+"""
 
 from __future__ import annotations
 
@@ -23,14 +25,19 @@ from typing import Any, Callable, Dict, Optional, Tuple
 import flax.nnx as nnx
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
 import polars as pl
 import rich as r
+import rich.progress as progress
 import rich.console as console
+import shutil
 
 ###############################################################################
 # Globals
 ###############################################################################
+# Terminal columns
+_cols: int = shutil.get_terminal_size().columns
 # Number of inputs, hidden layers, and outputs
 _n_inputs: int = 6
 _n_hidden: int = 2
@@ -63,6 +70,8 @@ _beta1: float = 0.95
 _beta2: float = 0.9995
 _grad_clip: float = 1.0
 _weights_decay: float = 1e-2
+# Regularization (model) parameter
+_regularization: float = 1e-4
 
 
 ###############################################################################
@@ -386,7 +395,7 @@ def reference_loss(
     dnn: nnx.Module,
     input_data: jnp.ndarray,
     output_data: jnp.ndarray,
-    regularization: float = 1e-4,
+    regularization: float = _regularization,
 ) -> Tuple[jnp.ndarray, jnp.ndarray]:
     """Compute the loss function for the DNN.
 
@@ -446,6 +455,7 @@ def train(
     expected_data: jnp.ndarray,
     epochs: int = _n_epochs,
     batch_size: int = _n_batch_size,
+    **kwargs: Any,
 ) -> None:
     """Train the DNN model.
 
@@ -468,10 +478,11 @@ def train(
     batch_size: int
         Batch size for training.
     """
+    rich_console = kwargs.get("console", console.Console())
     num_samples = train_data.shape[0]
     num_batches = num_samples // batch_size
 
-    for epoch in range(epochs):
+    for epoch in progress.track(range(epochs), description="Training..."):
         for batch in range(num_batches):
             start_idx = batch * batch_size
             end_idx = min(start_idx + batch_size, num_samples)
@@ -494,7 +505,7 @@ def train(
                 x_batch,
             )
         epoch_metrics = metrics.compute()
-        r.print(
+        rich_console.print(
             f"[bold] Epoch: [/bold] {epoch + 1}/{epochs}\n"
             f"[bold] Loss: [/bold] {loss}\n"
             f"[bold] Metrics: [/bold] {epoch_metrics}\n"
@@ -514,6 +525,7 @@ def evaluate(
     env_parameters_eval: jnp.ndarray,
     shape_parameters_eval: jnp.ndarray,
     batch_size: int = _n_batch_size,
+    **kwargs: Any,
 ) -> Tuple[float, Dict[str, Any]]:
     """Evaluate the DNN model.
 
@@ -595,18 +607,204 @@ def evaluate(
         f"  [bold]Metrics:[/bold] {eval_metrics_computed}\n"
     )
 
-    # Print the Ising numbers from the evaluation data
-    ising_numbers = expected_eval_data[:, 0:1]
-    r.print(
-        "[bold green]Ising numbers from evaluation data:[/bold green]\n"
-        f"{ising_numbers}"
+    # Make table
+    _exp_i, _exp_p, _pred_i, _pred_p, _err_i, _err_p = _precompute_arrays(
+        expected_eval_data,
+        predicted_data_batch,
     )
-    r.print(
-        "[bold yellow]Ising numbers from the model:[/bold yellow]\n"
-        f"{predicted_data_batch[:, 0:1]}"
+    print_table(
+        (_exp_i, _exp_p),
+        (_pred_i, _pred_p),
+        (_err_i, _err_p),
+        console=kwargs.get("console", console.Console()),
+    )
+
+    # Plotting
+    plot_partial_distribution(
+        _exp_p,
+        _pred_p,
+        _err_p,
     )
 
     return avg_loss_eval, eval_metrics_computed
+
+
+################################################################################
+# Visualizers
+################################################################################
+def _precompute_arrays(
+    expected_data: jnp.ndarray,
+    predicted_data: jnp.ndarray,
+) -> Tuple[
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+    jnp.ndarray,
+]:
+    """Print the expected and predicted data as a pretty table."""
+    expected_ising = expected_data[:, 0:1]
+    expected_partials = expected_data[:, 1:]
+    predicted_ising = predicted_data[:, 0:1]
+    predicted_partials = predicted_data[:, 1:]
+    error_ising = jnp.abs(predicted_ising - expected_ising)
+    error_partials = jnp.abs(predicted_partials - expected_partials)
+    return (
+        expected_ising,
+        expected_partials,
+        predicted_ising,
+        predicted_partials,
+        error_ising,
+        error_partials,
+    )
+
+
+def print_table(
+    expected: Tuple[jnp.ndarray, jnp.ndarray],
+    predicted: Tuple[jnp.ndarray, jnp.ndarray],
+    error: Tuple[jnp.ndarray, jnp.ndarray],
+    **kwargs,
+) -> None:
+    """Print arrays as a pretty table.
+
+    Inputs
+    ======
+    expected: Tuple[jnp.ndarray, jnp.ndarray]
+        Expected data (Ising number and partials).
+    predicted: Tuple[jnp.ndarray, jnp.ndarray]
+        Predicted data (Ising number and partials).
+    error: Tuple[jnp.ndarray, jnp.ndarray]
+        Error data (Ising number and partials).
+    kwargs: dict
+        Additional keyword arguments for the table.
+    """
+    title = kwargs.get("title", "Comparison of expected and predicted values")
+    rich_console = kwargs.get("rich_console", console.Console())
+
+    # Construct polars DataFrame to generate easier statistics
+    _dict = {
+        "I_e": np.array(expected[0]).flatten(),
+        "I_p": np.array(predicted[0]).flatten(),
+        "err(I)": np.array(error[0]).flatten(),
+    }
+    for i in range(1, _n_outputs):
+        _dict.update(
+            {
+                f"p{i}_e": np.array(expected[1][:, i - 1]).flatten(),
+                f"p{i}_p": np.array(predicted[1][:, i - 1]).flatten(),
+                f"err(p{i})": np.array(error[1][:, i - 1]).flatten(),
+            }
+        )
+    df = pl.DataFrame(_dict)
+
+    # Get statistics
+    _ising_mae = df["err(I)"].mean()
+    _ising_std = df["err(I)"].std()
+    _ising_median = df["err(I)"].median()
+    _ising_rms = np.sqrt((df["err(I)"] ** 2).mean())
+    _ising_max = df["err(I)"].max()
+    _ising_min = df["err(I)"].min()
+
+    _partials_mae = []
+    _partials_std = []
+    _partials_median = []
+    _partials_rms = []
+    _partials_max = []
+    _partials_min = []
+    for i in range(1, _n_outputs):
+        _partials_mae.append(df[f"err(p{i})"].mean())
+        _partials_std.append(df[f"err(p{i})"].std())
+        _partials_median.append(df[f"err(p{i})"].median())
+        _partials_rms.append(np.sqrt((df[f"err(p{i})"] ** 2).mean()))
+        _partials_max.append(df[f"err(p{i})"].max())
+        _partials_min.append(df[f"err(p{i})"].min())
+
+    # Print statistics
+    rich_console.print("[bold yellow]=[/bold yellow]" * _cols)
+    rich_console.print(
+        f"[bold cyan]Statistics for Ising number error:[/bold cyan]\n"
+        f"\t[bold]MAE:[/bold] {_ising_mae:.4f}\n"
+        f"\t[bold]STD:[/bold] {_ising_std:.4f}\n"
+        f"\t[bold]Median:[/bold] {_ising_median:.4f}\n"
+        f"\t[bold]RMS:[/bold] {_ising_rms:.4f}\n"
+        f"\t[bold]Max:[/bold] {_ising_max:.4f}\n"
+        f"\t[bold]Min:[/bold] {_ising_min:.4f}\n"
+    )
+    for i in range(1, _n_outputs):
+        rich_console.print(
+            f"[bold cyan]Statistics for partial {i} error:[/bold cyan]\n"
+            f"\t[bold]MAE:[/bold] {_partials_mae[i-1]:.4f}\n"
+            f"\t[bold]STD:[/bold] {_partials_std[i-1]:.4f}\n"
+            f"\t[bold]Median:[/bold] {_partials_median[i-1]:.4f}\n"
+            f"\t[bold]RMS:[/bold] {_partials_rms[i-1]:.4f}\n"
+            f"\t[bold]Max:[/bold] {_partials_max[i-1]:.4f}\n"
+            f"\t[bold]Min:[/bold] {_partials_min[i-1]:.4f}\n"
+        )
+
+    full_table_1 = r.table.Table(title=title+" (Part 1)")
+    full_table_1.add_column("I_e", justify="right", style="cyan")
+    full_table_1.add_column("I_p", justify="right", style="green")
+    full_table_1.add_column("|err(I)|", justify="right", style="red")
+    for i in range(1, _n_outputs // 2 + 1):
+        full_table_1.add_column(f"p{i}_e", justify="right", style="cyan")
+        full_table_1.add_column(f"p{i}_p", justify="right", style="green")
+        full_table_1.add_column(f"|err(p{i})|", justify="right", style="red")
+
+    for i in range(len(expected[0])):
+        row = [
+            f"{expected[0][i][0]:.4f}",
+            f"{predicted[0][i][0]:.4f}",
+            f"{error[0][i][0]:.4f}",
+        ]
+        for j in range(1, _n_outputs // 2 + 1):
+            row.extend(
+                [
+                    f"{expected[1][i, j - 1]:.4f}",
+                    f"{predicted[1][i, j - 1]:.4f}",
+                    f"{error[1][i, j - 1]:.4f}",
+                ]
+            )
+        full_table_1.add_row(*row)
+    rich_console.print(full_table_1)
+
+    full_table_2 = r.table.Table(title=title+" (Part 2)")
+    full_table_2.add_column("I_e", justify="right", style="cyan")
+    full_table_2.add_column("I_p", justify="right", style="green")
+    full_table_2.add_column("|err(I)|", justify="right", style="red")
+    for i in range(_n_outputs // 2 + 1, _n_outputs):
+        full_table_2.add_column(f"p{i}_e", justify="right", style="cyan")
+        full_table_2.add_column(f"p{i}_p", justify="right", style="green")
+        full_table_2.add_column(f"|err(p{i})|", justify="right", style="red")
+
+    for i in range(len(expected[0])):
+        row = [
+            f"{expected[0][i][0]:.4f}",
+            f"{predicted[0][i][0]:.4f}",
+            f"{error[0][i][0]:.4f}",
+        ]
+        for j in range(_n_outputs // 2 + 1, _n_outputs):
+            row.extend(
+                [
+                    f"{expected[1][i, j - 1]:.4f}",
+                    f"{predicted[1][i, j - 1]:.4f}",
+                    f"{error[1][i, j - 1]:.4f}",
+                ]
+            )
+        full_table_2.add_row(*row)
+    rich_console.print(full_table_2)
+    rich_console.print("[bold yellow]=[/bold yellow]" * _cols)
+    rich_console.input("[bold yellow]Press Enter to continue...[/bold yellow]")
+
+
+def plot_partial_distribution(
+    expected: jnp.ndarray,
+    predicted: jnp.ndarray,
+    error: jnp.ndarray,
+    **kwargs,
+) -> None:
+    """Plot the expected and predicted partial distributions."""
+    pass
 
 
 ###############################################################################
@@ -714,13 +912,36 @@ def main():
 
     _temp_str: str = (
         f"[bold cyan]DNNPype ({args.mode} mode)[/bold cyan]\n"
-        f"\t[bold] Epochs: {args.epochs}[/bold]\n"
-        f"\t[bold] Batch Size: {args.batch_size}[/bold]\n"
-        f"\t[bold] LR: {args.learning_rate}[/bold]\n"
-        f"\t[bold] Data Path: {args.data_path}[/bold]\n"
-        f"\t[bold] RNG Seed: {args.rng_seed}[/bold]\n"
+        f"\t[bold red] Enviromental parameters:[/bold red]\n"
+        f"\t\t[bold] Air Pressure [kPa]: {_default_env_parameters[0]}[/bold]\n"
+        f"\t\t[bold] Air Density [kg/m^3]: {_default_env_parameters[1]}[/bold]\n"
+        f"\t[bold green] Meta-parameters:[/bold green]\n"
+        f"\t\t[bold] Data Path: {args.data_path}[/bold]\n"
+        f"\t\t[bold] Epochs: {args.epochs}[/bold]\n"
+        f"\t\t[bold] Batch Size: {args.batch_size}[/bold]\n"
+        f"\t\t[bold] LR: {args.learning_rate}[/bold]\n"
+        f"\t\t[bold] RNG Seed: {args.rng_seed}[/bold]\n"
+        f"\t[bold cyan]Hyperparameters:[/bold cyan]\n"
+        f"\t\t[bold] Hidden Layers: {_n_hidden}[/bold]\n"
+        f"\t\t[bold] Hidden Layer Size: {_dim_hidden}[/bold]\n"
+        f"\t\t[bold] Beta1: {_beta1}[/bold]\n"
+        f"\t\t[bold] Beta2: {_beta2}[/bold]\n"
+        f"\t\t[bold] Epsilon: {_epsilon}[/bold]\n"
+        f"\t\t[bold] Weight Decay: {_weights_decay}[/bold]\n"
+        f"\t\t[bold] Gradient Clipping: {_grad_clip}[/bold]\n"
+        f"\t\t[bold] Convex Factor (cos decay): {_convex_factor}[/bold]\n"
+        f"\t\t[bold] Power Exponent: {_power_exponent}[/bold]\n"
+        f"\t\t[bold] Decay Steps: {_decay_steps_scheduler}[/bold]\n"
+        f"\t\t[bold] Ising Attention: {_ising_attention}[/bold]\n"
+        f"\t\t[bold] Regularization: {_regularization}[/bold]\n"
     )
+
+    rich_console.print("[bold yellow]=[/bold yellow]" * _cols)
     rich_console.print(_temp_str)
+    rich_console.print("[bold yellow]=[/bold yellow]" * _cols)
+    rich_console.input(
+        "[bold yellow]Press Enter to continue...[/bold yellow]"
+    )
 
     # 1. Initialize model
     rngs = nnx.Rngs(args.rng_seed)
@@ -753,14 +974,6 @@ def main():
 
     # 4. Load Data (Ising numbers pre-computed)
     all_input_data, all_expected_outputs = load_data(str_path=args.data_path)
-
-    # 4.2 Print Ising numbers from the loaded data
-    ising_numbers = all_expected_outputs[:, 0:1]
-    rich_console.print(
-        f"[bold green]Ising numbers from loaded data:[/bold green]\n"
-        f"{ising_numbers}"
-    )
-    rich_console.input("[bold yellow]Press Enter to continue...[/bold yellow]")
 
     if all_input_data is None or all_expected_outputs is None:
         rich_console.print(
@@ -839,6 +1052,7 @@ def main():
                 expected_data=train_expected,
                 epochs=args.epochs,
                 batch_size=args.batch_size,
+                console=rich_console,
             )
             # TODO: Implement model saving if args.save_path is provided
 
@@ -856,6 +1070,7 @@ def main():
                 env_parameters_eval=eval_env_params,
                 shape_parameters_eval=eval_shape_params,
                 batch_size=args.batch_size,
+                console=rich_console,
             )
         elif (
             args.mode == "train"
