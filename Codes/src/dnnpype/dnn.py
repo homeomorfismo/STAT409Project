@@ -10,6 +10,9 @@
 # - Standard deviation for bias initialization shold be below 0.4 and
 #   above 0.1
 # - Batch normalization is recommended, an alternative is to use RMSNorm
+# - Clipping the gradients close to 1.0 is recommended
+# - Weights decay is recommended, between 1e-2 and 1e-4
+# - Current reference loss below 0.05 is successful
 
 from __future__ import annotations
 
@@ -43,17 +46,23 @@ _n_batch_size: int = 32
 _default_env_parameters: jnp.ndarray = jnp.array(
     [0.7354785, 1.185]
 )  # Pressure (kPa) and density (kg/m^3)
+# Default shape parameters, these define a metric (partial distribution)
 _default_shape_parameters: jnp.ndarray = jnp.array([1.0, 1.0])
 # Standard deviation for normal distribution
 _std_dev: float = 0.325
 # Weight for Ising number loss, greater than 1
 _ising_attention: float = 2.5
 # Cosine decay scheduler parameters
-_decay_steps_scheduler: int = 5
-_convex_factor: float = 0.85
-_power_exponent: float = 1.25
+_decay_steps_scheduler: int = 10
+_convex_factor: float = 0.875
+_power_exponent: float = 1.125
 # Non-zero division epsilon
-_epsilon: float = 1e-8
+_epsilon: float = 1e-8  # Used also in sqrts
+# Momentum-like factors
+_beta1: float = 0.95
+_beta2: float = 0.9995
+_grad_clip: float = 1.0
+_weights_decay: float = 1e-2
 
 
 ###############################################################################
@@ -726,20 +735,20 @@ def main():
         alpha=_convex_factor,
         exponent=_power_exponent,
     )
-    optax_optimizer = optax.amsgrad(
-        learning_rate=scheduler,
-        eps_root=_epsilon,
+    optax_optimizer = optax.chain(
+        optax.clip_by_global_norm(_grad_clip),
+        optax.scale_by_adam(
+            b1=_beta1,
+            b2=_beta2,
+            eps=_epsilon,
+            eps_root=_epsilon,
+        ),
+        optax.add_decayed_weights(
+            weight_decay=_weights_decay,
+        ),
+        optax.scale_by_schedule(scheduler),
+        optax.scale(-1.0),  # descending
     )
-    # optax_optimizer = optax.sgd(
-    #     learning_rate=args.learning_rate,
-    #     momentum=0.9,
-    # )
-    # optax_optimizer = optax.adam(learning_rate=args.learning_rate)
-    # optax_optimizer = optax.lbfgs(
-    #     learning_rate=args.learning_rate,
-    #     memory_size=20,
-    #     linesearch=optax.scale_by_adam(b1=0.89, b2=0.99, eps_root=1e-8),
-    # )
     optimizer = nnx.Optimizer(dnn_model, optax_optimizer)
 
     # 4. Load Data (Ising numbers pre-computed)
