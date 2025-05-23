@@ -1,0 +1,10 @@
+flax==0.10.6
+jax==0.6.0
+numpy==2.2.6
+optax==0.2.4
+Pint==0.24.4
+plotly==6.0.1
+polars==1.30.0
+rich==14.0.0
+scipy==1.15.3
+sounddevice==0.5.1

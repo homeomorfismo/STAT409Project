@@ -8,13 +8,16 @@ authors = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "numpy",
-    "jax",
     "flax",
+    "jax",
+    "numpy",
     "optax",
-    "sounddevice",
+    "Pint",
+    "plotly",
+    "polars",
     "rich",
     "scipy",
+    "sounddevice",
 ]
 
 [project.optional-dependencies]
