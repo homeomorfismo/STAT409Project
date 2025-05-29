@@ -119,9 +119,10 @@ The main goal of this project concerns the improvement of the organ pipe voicing
 process.
 As the organ pipe design is a complex process, and usually is not a reversible
 process, it is important to ensure that the design of the pipes is done
-correctly; this presents a key constraint for the harmonization process.
-The parameters that are involved are diverse, and despite being computable or
-measurable, the access to this information does not simplify the process.
+correctly; this presents a key constraint for the intonation process.
+The parameters involved are various, which makes learning about this complex
+system a difficult task; the understanding of these parameters and their
+interactions would facilitate the harmonization process.
 
 A particular subgoal of this project is to improve the Ising
 formula~\autocite{1971Ising-1}, which reads
@@ -136,7 +137,8 @@ formula~\autocite{1971Ising-1}, which reads
 where \(\mathsf{I}\) is the Ising number, \(\omega\) is the (target) frequency
 of the pipe, \(v\) is the jet initial velocity, \(d\) is the jet initial
 thickness, \(h\) is the cut-up height (or the length of the mouth), \(P\) is the
-blowing pressure, and \(\rho\) is the density of the air.
+blowing pressure (where we require Bernoulli's Law, ~cf. \autocite{2025Lilj-1}),
+and \(\rho\) is the density of the air.
 From \autocite{1971Ising-1, 2025Lilj-1}, it is suggested that the Ising number
 should be constant, preferably close to \( \mathsf{I} \approx 2\).
 
@@ -174,7 +176,6 @@ following columns:
         The number of partials is not fixed, and it can vary from 1 to 8.
         This value is bounded between 0 and 100.
 \end{itemize}
-
 
 \section{Methodology}
 
@@ -253,16 +254,20 @@ The machine learning objectives are:
 
 \subsection{Generalized Additive Models}
 
-Generalized Additive Models (GAMs) as a flexible statistical approach capable
-of modeling nonlinear relationships among multiple acoustic and physical
-parameters.
-Unlike linear models or fixed formulas such as Ising’s, GAMs allow us to
-integrate variables like toe-hole diameter (flow rate),
-flue dimension, cut-up height, and blowing pressure—each of which may influence
-tonal quality in a complex, interdependent manner.
-By using GAMs, we can refine or extend existing models by incorporating
-empirical data collected, thus providing a data-driven framework that supports
-both traditional craftsmanship and modern production scaling in organ building.
+Generalized Additive Models (GAMs) offer a robust statistical framework for modeling complex, 
+nonlinear interactions between multiple pipe parameters such as toe-hole diameter (flow rate), flue dimension,
+cut-up height, and blowing pressure—parameters critically affecting pipe tonal quality. 
+GAMs will integrate empirical data, facilitating a nuanced understanding of how these factors interact in a nonlinear 
+manner, thus providing a data-driven approach to refine existing formulas, like the Ising formula, and support 
+practical decision-making in pipe manufacturing and voicing.
+
+Our GAM-specific goals include:
+\begin{itemize}
+    \item Constructing flexible predictive models that accurately determine the Ising number and partials ratios.
+ \item Comparing GAM predictions to both analytical models and real-world data.
+ \item Providing actionable insights for pipe dimensioning ahead of the voicing stage, enhancing efficiency 
+    and tonal consistency in organ manufacturing.
+\end{itemize}
 
 \section{Project timeline}
 
