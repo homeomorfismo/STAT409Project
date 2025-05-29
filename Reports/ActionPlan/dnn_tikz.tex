@@ -1,0 +1,109 @@
+\begin{figure}[htbp]
+\centering
+
+\begin{tikzpicture}[
+    node distance=2cm,
+    neuron/.style={circle, draw, minimum size=8mm, fill=blue!30},
+    input/.style={circle, draw, minimum size=8mm, fill=green!30},
+    output/.style={circle, draw, minimum size=8mm, fill=orange},
+    layer/.style={rectangle, draw, minimum height=3cm, minimum width=1cm, fill=gray!30, opacity=0.3},
+    connection/.style={->, thick}
+]
+
+% Input nodes
+\node[input] (i1) at (0,3) {$x_1$};
+\node[input] (i2) at (0,2) {$x_2$};
+\node[input] (i3) at (0,1) {$x_3$};
+\node[input] (i4) at (0,0) {$x_4$};
+\node[input] (i5) at (0,-1) {$x_5$};
+\node[input] (i6) at (0,-2) {$x_6$};
+
+% Input labels
+\node[left=0.5mm of i1] {\tiny{\texttt{isBourdon}}};
+\node[left=0.5mm of i2] {\tiny{\texttt{flueDepth}}};
+\node[left=0.5mm of i3] {\tiny{\texttt{frequency}}};
+\node[left=0.5mm of i4] {\tiny{\texttt{cutUpHeight}}};
+\node[left=0.5mm of i5] {\tiny{\texttt{diameterToe}}};
+\node[left=0.5mm of i6] {\tiny{\texttt{acousticIntensity}}};
+
+% Batch Normalization
+\node[layer] (bn) at (2,0.5) {};
+\node[below=0.5mm of bn] {\tiny{\texttt{BatchNorm}}};
+
+% Input Layer (6 -> 16)
+\node[neuron] (h1_1) at (4,2.5) {};
+\node[neuron] (h1_2) at (4,1.5) {};
+\node[neuron] (h1_3) at (4,0.5) {};
+\node[neuron] (h1_4) at (4,-0.5) {};
+\node[neuron] (h1_5) at (4,-1.5) {};
+%{\scriptsize tanh};
+
+% Hidden Layer 1 (16 -> 16)
+\node[neuron] (h2_1) at (6,2.5) {};
+\node[neuron] (h2_2) at (6,1.5) {};
+\node[neuron] (h2_3) at (6,0.5) {};
+\node[neuron] (h2_4) at (6,-0.5) {};
+\node[neuron] (h2_5) at (6,-1.5) {};
+\node[below=5mm of h2_5] {\(\mathsf{tanh}(\mathbf{W} \mathbf{x}^\ell + \mathbf{b})\)};
+
+% Hidden Layer 2 (16 -> 16)
+\node[neuron] (h3_1) at (8,2.5) {};
+\node[neuron] (h3_2) at (8,1.5) {};
+\node[neuron] (h3_3) at (8,0.5) {};
+\node[neuron] (h3_4) at (8,-0.5) {};
+\node[neuron] (h3_5) at (8,-1.5) {};
+
+% Output Branch 1: Ising Number (16 -> 1)
+\node[output] (o_ising) at (10,2) {};
+\node[right=0.1mm of o_ising] {\tiny{\texttt{isingNumber}}};
+\node[below=3mm of o_ising] {\tiny{\(\mathsf{softplus}(\mathbf{W}_{\mathsf{I}}^L \mathbf{x}^{L-1} + \mathbf{b}_{\mathsf{I}}^L)\)}};
+
+% Output Branch 2: Partials (16 -> 8)
+\node[output] (o1) at (10,0) {};
+\node[output] (o2) at (10,-0.5) {};
+\node[output] (o3) at (10,-1) {};
+\node[output] (o4) at (10,-1.5) {};
+\node[right=2mm of o2] {\tiny{\texttt{partial1}, \dots, \texttt{partial8}}};
+\node[below=3mm of o4] {\tiny{\(\mathsf{softmax}(\mathbf{W}_{\mathsf{P}}^L \mathbf{x}^{L-1} + \mathbf{b}_{\mathsf{P}}^L)\)}};
+
+% Connections from inputs to batch norm
+\foreach \i in {1,2,3,4,5,6} {
+    \draw[connection] (i\i) -- (bn);
+}
+
+% Connections from batch norm to first hidden layer
+\foreach \i in {1,2,3,4,5} {
+    \draw[connection] (bn) -- (h1_\i);
+}
+
+% Connections between hidden layers
+\foreach \i in {1,2,3,4,5} {
+    \foreach \j in {1,2,3,4,5} {
+        \draw[connection, opacity=0.3] (h1_\i) -- (h2_\j);
+        \draw[connection, opacity=0.3] (h2_\i) -- (h3_\j);
+    }
+}
+
+% Connections to Ising output
+\foreach \i in {1,2,3,4,5} {
+    \draw[connection, opacity=0.3] (h3_\i) -- (o_ising);
+}
+
+% Connections to Partials outputs
+\foreach \i in {1,2,3,4,5} {
+    \foreach \j in {1,2,3,4} {
+        \draw[connection, opacity=0.3] (h3_\i) -- (o\j);
+    }
+}
+
+% Layer labels
+\node[above=5mm] at (0,3.5) {\textbf{Input}};
+\node[above=5mm] at (2,3.5) {\textbf{Norm}};
+\node[above=5mm] at (6,3.5) {\textbf{Hidden layers}};
+\node[above=5mm] at (10,3.5) {\textbf{Outputs}};
+
+\end{tikzpicture}
+
+\caption{Deep Neural Network Architecture for Ising Number and Partials Prediction}
+\label{fig:dnn_architecture}
+\end{figure}

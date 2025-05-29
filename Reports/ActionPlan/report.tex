@@ -4,6 +4,7 @@
 \usepackage{amsmath,amssymb,amsfonts,amsthm,mathtools}
 \usepackage{siunitx}
 \usepackage{tikz,pgfplots,pgfplotstable}
+\usetikzlibrary{positioning, shapes.geometric}
 \pgfplotsset{compat=newest}
 
 \addbibresource{refs.bib}
@@ -285,12 +286,75 @@ The project timeline is the following:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Current work!
 
-\chapter{Statistical Exploration}
+\chapter{Exploratory Data Analysis}
+% From Hai's work
+
+We first start with the process of data wrangling.
+We do not include constants or parameters that are given by the client --say,
+the blowing pressure, the density of the air, or the jet initial velocity-- in
+the Ising number formula~\ref{eq:ising}.
+
+Rather, we focus on the observable parameters that can be measured, as described
+above.
+Recall that these quantities are: \todo{Units}
+\begin{itemize}
+    \item \textbf{flueDepth} -- The depth of the flue.
+    \item \textbf{frequency} -- The frequency of the pipe.
+    \item \textbf{cutUpHeight} -- The cut-up height of the pipe.
+    \item \textbf{diameterToe} -- The diameter of the toe.
+    \item \textbf{acousticIntensity} -- The acoustic intensity of the pipe.
+    \item \textbf{partialN} -- The \(N\)th partial of the pipe.
+\end{itemize}
+We perform standard computations to retrive the Ising number and the flow rate
+from the data.
+
+\section{Gradient Boosted Decision Trees}
+
+We use Gradient Boosted Decision Trees (GBDT) to study the relationship
+between the Ising number and the parameters of the organ pipe.
+GBDT~\autocite{2001Fri-1} is implemented in Scikit-learn~\autocite{2016Kra-1}.
+We can confirm that cut-up height is an relevant factor in the Ising formula.
+
+\section{Linear regression for partials distribution}
+
+We use linear regression to study the relationship between the frequencies and
+their partials (normalized intensities).
+Three heuristic shape functions are used to fit the partials distribution:
+\begin{itemize}
+    \item \(\mathfrak{p}_\mathsf{lin}(x) = a x + b\) -- Linear function.
+    \item \(\mathfrak{p}_\mathsf{exp}(x) = a e^{x} + b\) -- Exponential function.
+    \item \(\mathfrak{p}_\mathsf{log}(x) = a \log(x) + b\) -- Logarithmic function.
+\end{itemize}
+
+\todo{There are more things but Hai is still working on it.}
 
 % TODO: Hai will do the jnb
 
-\chapter{A (small) deep neural network model for the Ising number}
+\chapter[DNN model for Ising number]{A (small) deep neural network model for the Ising number}
 
+Another approach to integrate the factors that fully determine the Ising number
+and the partials ratios is to use a deep neural network (DNN).
+For this goal, we use the JAX framework~\autocite{2018Jax-1, 2020Optax-1,
+2024Flax-1} to implement a ``small'' DNN model.
+The architecture of the DNN was made simple due to the limited amount of data
+available.
+
+The input features are encoded in a six-dimensional vector
+\(\mathbf{x} \in \mathbb{R}^6\), where each component corresponds to the
+already mentioned parameters (\textbf{flueDepth}, \textbf{frequency},
+\textbf{cutUpHeight}, \textbf{diameterToe}, \textbf{acousticIntensity}).
+We perform a \texttt{flax.nnx.BatchNorm} normalization of the input,
+inject the output into a larger dimensional space (of hidden layers),
+after compressing the input into a nine-dimensional output vector,
+which consists of the Ising number and the partials ratios
+\(\mathbf{y} \in \mathbb{R}^9\).
+We expect \(\mathbf{y}_0 \approx \mathsf{I}(\mathbf{x})\) to be, approximately,
+the Ising number, and \(\mathbf{y}_1, \ldots, \mathbf{y}_8\) to be the partials
+associated to the \(\mathbf{x}\) observation.
+
+\include{dnn_tikz}
+
+\subsection{Hyperparameter tuning}
 % TODO: Gabriel has this in /Code/dnnpype
 
 \chapter{Generalized Additive Models and the Ising number}
