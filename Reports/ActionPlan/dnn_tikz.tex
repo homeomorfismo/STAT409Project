@@ -44,7 +44,7 @@
 \node[neuron] (h2_3) at (6,0.5) {};
 \node[neuron] (h2_4) at (6,-0.5) {};
 \node[neuron] (h2_5) at (6,-1.5) {};
-\node[below=5mm of h2_5] {\(\mathsf{tanh}(\mathbf{W} \mathbf{x}^\ell + \mathbf{b})\)};
+\node[below=5mm of h2_5] {\(\mathsf{tanh}(\mathbf{W}^\ell \mathbf{x}^{\ell-1} + \mathbf{b}^{\ell})\)};
 
 % Hidden Layer 2 (16 -> 16)
 \node[neuron] (h3_1) at (8,2.5) {};

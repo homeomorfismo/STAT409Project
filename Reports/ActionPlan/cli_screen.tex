@@ -1,0 +1,25 @@
+\begin{code}
+\captionof{listing}{Example Code}
+\label{code:example}
+\begin{minted}[frame=lines, linenos]{text}
+usage: run_model [-h] [--mode {train,evaluate}] [--epochs EPOCHS]
+                 [--batch_size BATCH_SIZE] [--learning_rate LEARNING_RATE]
+                 [--data_path DATA_PATH] [--rng_seed RNG_SEED]
+
+DNNPype/dnn.py: DNN model for organ pipe acoustics. Train or evaluate a DNN
+model for organ pipe acoustics.
+
+options:
+  -h, --help            show this help message and exit
+  --mode {train,evaluate}
+                        Operation mode: 'train' or 'evaluate'. Default: train
+  --epochs EPOCHS       Number of training epochs. Default: 100
+  --batch_size BATCH_SIZE
+                        Batch size for training and evaluation. Default: 32
+  --learning_rate LEARNING_RATE
+                        Learning rate for the optimizer. Default: 0.001
+  --data_path DATA_PATH
+                        Path to the CSV data file.
+  --rng_seed RNG_SEED   Seed for JAX RNG key generation.
+\end{minted}
+\end{code}

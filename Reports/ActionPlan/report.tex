@@ -1,7 +1,9 @@
 \documentclass{psu-report}
 \usepackage{psu-thesis-chicago}
 \usepackage{todonotes}
-\usepackage{amsmath,amssymb,amsfonts,amsthm,mathtools}
+\usepackage{amsmath,amssymb,amsfonts,amsthm,mathtools,mathrsfs}
+\usepackage{listings}
+\usepackage{minted}
 \usepackage{siunitx}
 \usepackage{tikz,pgfplots,pgfplotstable}
 \usetikzlibrary{positioning, shapes.geometric}
@@ -24,6 +26,8 @@
 \clientOne{Arno Patin}
 
 \documentformat{monograph}
+
+\newenvironment{code}{\begin{listing}}{\end{listing}}
 
 
 \begin{document}
@@ -321,9 +325,9 @@ We use linear regression to study the relationship between the frequencies and
 their partials (normalized intensities).
 Three heuristic shape functions are used to fit the partials distribution:
 \begin{itemize}
-    \item \(\mathfrak{p}_\mathsf{lin}(x) = a x + b\) -- Linear function.
-    \item \(\mathfrak{p}_\mathsf{exp}(x) = a e^{x} + b\) -- Exponential function.
-    \item \(\mathfrak{p}_\mathsf{log}(x) = a \log(x) + b\) -- Logarithmic function.
+    \item \(\mathfrak{p}_\mathsf{lin}(\omega; a, b) = a \omega + b\) -- Linear function.
+    \item \(\mathfrak{p}_\mathsf{exp}(\omega; a, b) = a e^{\omega} + b\) -- Exponential function.
+    \item \(\mathfrak{p}_\mathsf{log}(\omega; a, b) = a \log(\omega) + b\) -- Logarithmic function.
 \end{itemize}
 
 \todo{There are more things but Hai is still working on it.}
@@ -339,6 +343,8 @@ For this goal, we use the JAX framework~\autocite{2018Jax-1, 2020Optax-1,
 The architecture of the DNN was made simple due to the limited amount of data
 available.
 
+\section{Architecture of the model}
+
 The input features are encoded in a six-dimensional vector
 \(\mathbf{x} \in \mathbb{R}^6\), where each component corresponds to the
 already mentioned parameters (\textbf{flueDepth}, \textbf{frequency},
@@ -351,10 +357,111 @@ which consists of the Ising number and the partials ratios
 We expect \(\mathbf{y}_0 \approx \mathsf{I}(\mathbf{x})\) to be, approximately,
 the Ising number, and \(\mathbf{y}_1, \ldots, \mathbf{y}_8\) to be the partials
 associated to the \(\mathbf{x}\) observation.
+See~\autoref{fig:dnn_architecture} for the architecture of the DNN.
+For convenience, we denote the DNN model as \(\mathsf{DNN}: \mathbb{R}^6 \to
+\mathbb{R}^9\); in particular, we denote
+\(\mathsf{DNN}_\mathsf{I}(\mathbf{x})\in [0, +\infty)\)
+as the Ising number prediction associated to the input \(\mathbf{x}\), and
+\(\mathsf{DNN}_\mathsf{P}(\mathbf{x}) \in [0, 1]^8\)
+as the partials ratios prediction associated to the input \(\mathbf{x}\).
 
-\include{dnn_tikz}
+\input{dnn_tikz}
 
-\subsection{Hyperparameter tuning}
+\section{Loss function}
+
+The loss function consists of two terms: an squared error term for the
+predicted Ising number and the exact Ising number, and a mean squared error term
+for the predicted partials ratios and the exact partials ratios.
+This is, given observational data \(\{ (\mathbf{x}_i, \mathbf{p}_i)\}_{i=1}^N
+\subset \mathbb{R}^6 \times [0,1]^8\), where \(\mathbf{p}_i\) are the
+partials ratios (normalized between 0 and 1), and the Ising number formula
+\(\mathsf{I}(\mathbf{x})\) is given by~\eqref{eq:ising}, we define the loss
+function as follows:
+\begin{equation}
+    \label{eq:dnn_loss}
+    \mathscr{L}_\mathsf{DNN}(\mathbf{W}, \mathbf{b}; \lambda) =
+    \frac{1}{N} \sum_{i=1}^N \left(
+        \lambda^2 \left( \mathsf{DNN}_\mathsf{I}(\mathbf{x}_i) - \mathsf{I}(\mathbf{x}_i) \right)^2
+        +
+        \sum_{j=1}^8 \left( \mathsf{DNN}_\mathsf{P}(\mathbf{x}_i)_j - \mathbf{p}_{i,j} \right)^2
+    \right),
+\end{equation}
+where \(\lambda\) is a hyperparameter that controls the relative importance of
+the Ising number prediction and the partials ratios prediction.
+The hyprerparameter tuning is explained in the next section~\autoref{sec:hyperparameter_tuning}.
+
+\section{Hyperparameter tuning and optimization}
+\label{sec:hyperparameter_tuning}
+
+This part was mainly heuristic; we expect to obtain a better model under
+more diverse and distributed data.
+
+We use the Optax library~\autocite{2020Optax-1} to optimize the loss function.
+Adam~\autocite{2014Kin-1} is used as the optimizer.
+A scheduler is used to control the learning rate, which is set to
+be a cosine decay function~\autocite{2016LosHut-1}.
+We chain the optimizer with a gradient clipping function and a weight decay
+regularization term.
+The configuration of the hyperparameters is summarized
+in~\autoref{tab:dnn_hyperparameters}.
+
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{lll}
+        \hline
+        \textbf{Hyperparameter} & \textbf{Value} & \textbf{Type} \\
+        \hline
+        \(N_\mathsf{hidden}\) (number of hidden layers) &
+        2 & \texttt{int} \\
+        \(d_\mathsf{hidden}\) (dimension of hidden layers) &
+        16 & \texttt{int} \\
+        \(\sigma\) (standard deviation bias initialization) &
+        0.325 & \texttt{float} \\
+        \(\lambda\) (importance of Ising number prediction) &
+        2.5 & \texttt{float} \\
+        \(n_\mathsf{decay}\) (number of decay steps) &
+        10 & \texttt{int} \\
+        \(\alpha_\mathsf{decay}\) (decay convex factor) &
+        0.875 & \texttt{float} \\
+        \(p_\mathsf{decay}\) (decay power factor) &
+        1.125 & \texttt{float} \\
+        \(\varepsilon\) (division regularization) &
+        1.0e-8 & \texttt{float} \\
+        \(\beta_{1,\mathsf{Adam}}\) (Adam first moment) &
+        0.95 & \texttt{float} \\
+        \(\beta_{2,\mathsf{Adam}}\) (Adam second moment) &
+        0.9995 & \texttt{float} \\
+        \(\tau_\mathsf{clip}\) (gradient clipping factor) &
+        1.0 & \texttt{float} \\
+        \(\tau_\mathsf{weight}\) (weight decay factor) &
+        1.0e-2 & \texttt{float} \\
+        \(\rho\) (weight regularization factor) &
+        1.0e-4 & \texttt{float} \\
+        \hline
+    \end{tabular}
+    \caption{Hyperparameters used for the DNN model.}
+    \label{tab:dnn_hyperparameters}
+\end{table}
+
+\section{Utilization of the model}
+
+We provide a command line interface (CLI) for interacting with the Python
+package \texttt{dnnpype}.
+The main scripts are \texttt{run\_model}, \texttt{classify\_samples}, and
+\texttt{convert\_units}.
+\begin{itemize}
+    \item \texttt{run\_model} -- Runs the DNN model for training or evaluation.
+        It accepts several parameters, such as the number of epochs, batch size,
+        learning rate, and data path.
+    \item \texttt{classify\_samples} -- Classifies samples to generate a rating
+        (and further study) of ``optimal'' partials ratios.
+    \item \texttt{convert\_units} -- Small extension of Pint~\autocite{2025Pint-1}
+        to convert units of the parameters.
+\end{itemize}
+See Listing~\autoref{code:example} for an example of how to use the DNN model.
+
+\include{cli_screen}
+
 % TODO: Gabriel has this in /Code/dnnpype
 
 \chapter{Generalized Additive Models and the Ising number}
