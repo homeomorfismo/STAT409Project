@@ -336,6 +336,61 @@ We consider the \textbf{flueDepth}, \textbf{cutUpHeight}, and
 partial distribution as the dependent variable.
 We can confirm that cut-up height is an relevant factor in the Ising formula.
 
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            xlabel={Flow rate},
+            ylabel={Predicted Ising number},
+            grid=major%
+        ]
+        \addplot table[x=flowRate, y=predictedIsing, col sep=comma, only marks] {../../Data/flowIsingData.csv};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Flow rate vs. predicted Ising number.}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            xlabel={Frequency (Hz)},
+            ylabel={Cut-Up Height (m)},
+            colorbar,
+            colormap/hot,
+            point meta=explicit,
+            grid=major
+        ]
+        \pgfmathsetmacro\jitter{rand*0.0005}
+        \addplot[
+            scatter,
+            only marks,
+            mark size=1.5pt,
+            opacity=0.7,
+            scatter src=explicit
+        ] table[x=frequency, y=cutUpHeight, meta=diameterToe, col sep=comma] {../../Data/freqCutUpHeightDiam.csv};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Cut-Up Height vs. Frequency, colored by Diameter Toe.}
+\end{figure}
+
+
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            xlabel={Acoustic Intensity},
+            ylabel={Modified Ising number},
+            grid=major%
+        ]
+        \addplot table[x=acousticIntensity, y=modifiedIsing, col sep=comma, only marks] {../../Data/accousticIntensityModIsing.csv};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Acoustic Intensity vs. Modified Ising number.}
+\end{figure}
+
+
+
 \section{Linear regression for partials distribution}
 
 We use linear regression to study the relationship between the frequencies and
