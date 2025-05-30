@@ -1,0 +1,29 @@
+\begin{code}
+\captionof{listing}{\texttt{classify\_samples} CLI Example}
+\label{code:classify}
+\begin{minted}[frame=lines, linenos]{text}
+usage: classify_samples [-h] --frequency FREQUENCY --output-dir OUTPUT_DIR
+                        [--duration DURATION] [--samplerate SAMPLERATE]
+                        [--samples SAMPLES] [--output OUTPUT] [--save-samples]
+                        [--plot-samples]
+
+DNNPype: Interactive sound generation and rating. Generate sound samples using
+different partials distributions.
+
+options:
+  -h, --help            show this help message and exit
+  --frequency FREQUENCY
+                        Fundamental frequency of the sound in Hz.
+  --output-dir OUTPUT_DIR
+                        Directory to save the output files.
+  --duration DURATION   Duration of the sound in seconds.
+  --samplerate SAMPLERATE
+                        Sample rate of the sound in Hz.
+  --samples SAMPLES     Number of (random) samples to generate.
+  --output OUTPUT       Output CSV file name (without .csv extension). If not
+                        provided, the name will be generated from previous
+                        arguments.
+  --save-samples        Save wav files of the generated samples.
+  --plot-samples        Plot the generated samples.
+\end{minted}
+\end{code}

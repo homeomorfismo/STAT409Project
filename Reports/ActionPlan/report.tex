@@ -28,7 +28,11 @@
 \documentformat{monograph}
 
 \newenvironment{code}{\begin{listing}}{\end{listing}}
-
+\newcommand{\chapterauthor}[1]{%
+  \vspace{-2em}
+  {\large \textsc{#1}\par}
+  \vspace{1.5em}
+}
 
 \begin{document}
 
@@ -87,6 +91,7 @@
 \startbody
 
 \chapter{Introduction}
+\chapterauthor{Meghana Cyanam, Hai Nguyen, Gabriel Pinochet-Soto}
 
 Pipe organs have been around for hundreds of years, and making them sound just
 right is a special job called intonation, or \emph{voicing}.
@@ -108,6 +113,7 @@ the airflow, and how we can use this information to:
 \end{enumerate}
 
 \chapter{Action Plan}
+\chapterauthor{Meghana Cyanam, Hai Nguyen, Gabriel Pinochet-Soto}
 
 In this Chapter, we discuss different approaches for successfully improving the
 organ pipe voicing process.
@@ -291,6 +297,8 @@ The project timeline is the following:
 % Current work!
 
 \chapter{Exploratory Data Analysis}
+
+\chapterauthor{Hai Nguyen, Gabriel Pinochet-Soto}
 % From Hai's work
 
 We first start with the process of data wrangling.
@@ -300,7 +308,7 @@ the Ising number formula~\ref{eq:ising}.
 
 Rather, we focus on the observable parameters that can be measured, as described
 above.
-Recall that these quantities are: \todo{Units}
+Recall that these quantities are:
 \begin{itemize}
     \item \textbf{flueDepth} -- The depth of the flue.
     \item \textbf{frequency} -- The frequency of the pipe.
@@ -317,6 +325,15 @@ from the data.
 We use Gradient Boosted Decision Trees (GBDT) to study the relationship
 between the Ising number and the parameters of the organ pipe.
 GBDT~\autocite{2001Fri-1} is implemented in Scikit-learn~\autocite{2016Kra-1}.
+This method is used for predicting continuous values (like frequency
+distributions).
+It learns patterns in the data by combining multiple decision trees in a
+sequential way, called boosting.
+Once trained, the model evaluates which features (geometric parameters)
+contribute the most to predicting the frequency distribution.
+We consider the \textbf{flueDepth}, \textbf{cutUpHeight}, and
+\textbf{diameterToe} as the independent variables, and the
+partial distribution as the dependent variable.
 We can confirm that cut-up height is an relevant factor in the Ising formula.
 
 \section{Linear regression for partials distribution}
@@ -330,11 +347,36 @@ Three heuristic shape functions are used to fit the partials distribution:
     \item \(\mathfrak{p}_\mathsf{log}(\omega; a, b) = a \log(\omega) + b\) -- Logarithmic function.
 \end{itemize}
 
-\todo{There are more things but Hai is still working on it.}
+\section{Correction formulas}
 
-% TODO: Hai will do the jnb
+Under the heuristic assumption that the Ising number should depend on the flow
+rate in a direct proportional way, a first proposed correction formula is
+\begin{equation}
+    \label{eq:ising_correction}
+    \mathsf{I}_\mathsf{corr}(\mathbf{x}) = \mathsf{I}(\mathbf{x})
+    (1 + \frac{1}{2} \mathsf{F}(\mathbf{x})),
+\end{equation}
+where \(\mathsf{F}(\mathbf{x})\) is the flow rate of the wind.
+
+The intent is that, under small flow rates \(|\mathsf{F}(\mathbf{x})| \ll 1\),
+the Ising number is approximately equal to the original Ising number.
+
+A second proposed correction formula uses conservation of the flow rate:
+\begin{equation}
+    \label{eq:ising_correction2}
+    \mathsf{I}_\mathsf{corr} = 
+    \frac{A_{\mathrm{sys}}}{\omega_0 A_{\mathrm{toe}}}\sqrt{\frac{2 P d}{\rho h^3}}
+\end{equation}
+where \(A_{\mathrm{sys}}\) is the area of the system --where the wind velocity
+has been measured-- and \(A_{\mathrm{toe}}\) is the area of the toe hole.
+This integrates small perturbations in value of the Ising number, does not
+change its dimensions, and comes from the physical interpretation of the
+wind flow as an incompressible fluid.
+
+
 
 \chapter[DNN model for Ising number]{A (small) deep neural network model for the Ising number}
+\chapterauthor{Gabriel Pinochet-Soto}
 
 Another approach to integrate the factors that fully determine the Ising number
 and the partials ratios is to use a deep neural network (DNN).
@@ -358,6 +400,15 @@ We expect \(\mathbf{y}_0 \approx \mathsf{I}(\mathbf{x})\) to be, approximately,
 the Ising number, and \(\mathbf{y}_1, \ldots, \mathbf{y}_8\) to be the partials
 associated to the \(\mathbf{x}\) observation.
 See~\autoref{fig:dnn_architecture} for the architecture of the DNN.
+
+The specific independent softmax-softplus layers are used to ensure outputs
+are in the correct range: the Ising number is non-negative, and the partials
+ratios are normalized between 0 and 1.
+We favor to use hyperbolic tangent activation functions for the hidden layers,
+as they are zero-centered and can help with the convergence of the model.
+Moreover, it allows for more flexibility in the model, as it can consider
+negative values in the hidden layers.
+
 For convenience, we denote the DNN model as \(\mathsf{DNN}: \mathbb{R}^6 \to
 \mathbb{R}^9\); in particular, we denote
 \(\mathsf{DNN}_\mathsf{I}(\mathbf{x})\in [0, +\infty)\)
@@ -458,13 +509,26 @@ The main scripts are \texttt{run\_model}, \texttt{classify\_samples}, and
     \item \texttt{convert\_units} -- Small extension of Pint~\autocite{2025Pint-1}
         to convert units of the parameters.
 \end{itemize}
-See Listing~\autoref{code:example} for an example of how to use the DNN model.
+See Code~\autoref{code:example} for an example of how to use the DNN model.
+On executing Code~\autoref{code:example-run}, 
+the model will be trained for 300 epochs with a learning rate of 0.01;
+we report a final total average loss of \(0.0393\).
+Other statistics are displayed on screen.
+A verification step on a test set of the data is performed, and the results are
+displayed on screen.
+
+\begin{code}
+\captionof{listing}{\texttt{run\_model} CLI Example run}
+\label{code:example-run}
+\mintinline{bash}{run_model --learning_rate 0.01 --epoch 300 --data_path <path_to_data>},
+\end{code}
 
 \include{cli_screen}
-
-% TODO: Gabriel has this in /Code/dnnpype
+\include{cli_samples}
+\include{cli_units}
 
 \chapter{Generalized Additive Models and the Ising number}
+\chapterauthor{Meghana Cyanam}
 
 % TODO: Meghana and Daniel had this
 
