@@ -19,9 +19,9 @@ Other observations
 from __future__ import annotations
 
 import argparse
+import pathlib
 import shutil
 import time
-import pathlib
 from abc import ABC
 from typing import Any, Callable, Dict, Optional, Tuple
 
@@ -30,11 +30,11 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+import orbax.checkpoint as ocp
 import polars as pl
 import rich as r
 import rich.console as console
 import rich.progress as progress
-import orbax.checkpoint as ocp
 
 ###############################################################################
 # Globals
@@ -974,13 +974,13 @@ def get_args():
         "--load_path",
         type=str,
         default=None,
-        help="Path to the pre-trained model to load. Default: None (no loading)",
+        help="Path to the model to load. Default: None (no loading)",
     )
     parser.add_argument(
         "--save_path",
         type=str,
         default=None,
-        help="Path to save the trained model. Default: None (no saving)",
+        help="Path to save the model. Default: None (no saving)",
     )
     parser.add_argument(
         "--epochs",
@@ -992,7 +992,7 @@ def get_args():
         "--batch_size",
         type=int,
         default=_n_batch_size,
-        help=f"Batch size for training and evaluation. Default: {_n_batch_size}",
+        help=f"Batch size for training. Default: {_n_batch_size}",
     )
     parser.add_argument(
         "--learning_rate",
@@ -1152,7 +1152,8 @@ def main():
         if args.load_path:
             load_path = pathlib.Path(args.load_path)
             rich_console.print(
-                f"[bold yellow]Loading model from {args.load_path}...[/bold yellow]"
+                "[bold yellow]Loading model from[/bold yellow]"
+                f"[bold yellow] {args.load_path}...[/bold yellow]"
             )
             abs_graph, abs_state = nnx.split(dnn_model)
             res_state = ckpt.restore(load_path / "state", abs_state)
