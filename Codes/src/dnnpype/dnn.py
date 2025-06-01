@@ -53,6 +53,8 @@ _n_batch_size: int = 32
 _air_params: jnp.ndarray = jnp.array(
     [0.7354785, 1.185]
 )  # Pressure (kPa) and density (kg/m^3)
+# Unit factor for Ising number calculation (TODO)
+_unit_factor: float = 1.0
 # Default shape parameters, these define a metric (partial distribution)
 _default_shape_parameters: jnp.ndarray = jnp.array([1.0, 1.0])
 # Standard deviation for normal distribution
@@ -219,9 +221,48 @@ def get_exact_ising_number(
     density = env_parameters[:, 1:2]
 
     ising = (1 / frequency) * jnp.sqrt(
-        (2 * pressure * flueDepth) / (density * jnp.power(cutUpHeight, 3))
+        (2 * pressure * flueDepth)
+        / (density * jnp.power(cutUpHeight, 3))
+        * _unit_factor
     )
     return ising
+
+
+def get_modified_ising_number(
+    input_data: jnp.ndarray,
+    env_parameters: jnp.ndarray,
+) -> jnp.ndarray:
+    """Compute the modified (batched) Ising number.
+
+    Inputs
+    ======
+    input_data: jnp.ndarray
+        Input data of shape (batch_size, _n_inputs).
+    env_parameters: jnp.ndarray
+        Environment parameters of shape (batch_size, _n_env_parameters + 1).
+
+    Outputs
+    =======
+    ising: jnp.ndarray
+        Modified Ising number of shape (batch_size, 1).
+    """
+    flueDepth = input_data[:, 1:2]
+    frequency = input_data[:, 2:3]
+    cutUpHeight = input_data[:, 3:4]
+    diameterToe = input_data[:, 4:5]
+    areaToe = jnp.pi * jnp.square(diameterToe) / 4.0
+
+    pressure = env_parameters[:, 0:1]
+    density = env_parameters[:, 1:2]
+    areaSystem = env_parameters[:, 2:3]
+
+    mod_ising = (1 / frequency) * jnp.sqrt(
+        (areaSystem / areaToe)
+        * (2 * pressure * flueDepth)
+        / (density * jnp.power(cutUpHeight, 3))
+        * _unit_factor
+    )
+    return mod_ising
 
 
 def get_linear_partial_dist(
@@ -438,6 +479,62 @@ def reference_loss(
     loss += regularization * reg_weights
 
     return loss, predicted_data
+
+
+def modified_loss(
+    dnn: nnx.Module,
+    input_data: jnp.ndarray,
+    output_data: jnp.ndarray,
+    env_parameters: jnp.ndarray,
+    shape_parameters: jnp.ndarray,
+    regularization: float = _regularization,
+) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    """Compute the modified loss function for the DNN.
+
+    Inputs
+    ======
+    dnn: nnx.Module
+        DNN model.
+    input_data: jnp.ndarray
+        Input data of shape (batch_size, _n_inputs).
+    output_data: jnp.ndarray
+        Output data of shape (batch_size, _n_outputs).
+    env_parameters: jnp.ndarray
+        Environment parameters of shape (batch_size, _n_env_parameters + 1).
+    shape_parameters: jnp.ndarray
+        Shape parameters of shape (batch_size, _n_shape_parameters).
+    regularization: float
+        Regularization parameter for L2 regularization.
+
+    Outputs
+    =======
+    loss: jnp.ndarray
+        Loss value.
+    """
+    predicted_data = dnn(input_data)
+
+    predicted_ising = predicted_data[:, 0:1]
+    predicted_partials = predicted_data[:, 1:]
+
+    ref_ising = get_modified_ising_number(input_data, env_parameters)
+    ref_partials = get_linear_partial_dist(input_data, shape_parameters)
+
+    loss_ising = jnp.square(predicted_ising - ref_ising)
+    loss_partials = jnp.mean(
+        jnp.square(predicted_partials - ref_partials),
+        axis=1,
+        keepdims=True,
+    )
+
+    reg_weights = jnp.sum(
+        jnp.square(optax.global_norm(nnx.state(dnn, nnx.Param)))
+    )
+
+    loss = jnp.mean(_ising_attention * loss_ising + loss_partials)
+    loss += regularization * reg_weights
+
+    return loss, predicted_data
+
 
 
 ################################################################################
@@ -867,16 +964,28 @@ def get_args():
         help="Operation mode: 'train' or 'evaluate'. Default: train",
     )
     parser.add_argument(
+        "--load_path",
+        type=str,
+        default=None,
+        help="Path to the pre-trained model to load. Default: None (no loading)",
+    )
+    parser.add_argument(
+        "--save_path",
+        type=str,
+        default=None,
+        help="Path to save the trained model. Default: None (no saving)",
+    )
+    parser.add_argument(
         "--epochs",
         type=int,
-        default=100,  # Assuming _n_epochs might be 100
-        help="Number of training epochs. Default: 100",
+        default=_n_epochs,
+        help=f"Number of training epochs. Default: {_n_epochs}",
     )
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=32,  # Assuming _n_batch_size might be 32
-        help="Batch size for training and evaluation. Default: 32",
+        default=_n_batch_size,
+        help=f"Batch size for training and evaluation. Default: {_n_batch_size}",
     )
     parser.add_argument(
         "--learning_rate",
@@ -1031,6 +1140,13 @@ def main():
 
     # 7. Run Mode
     if args.mode == "train":
+
+        # if args.load_path:
+        #     rich_console.print(
+        #         f"[bold yellow]Loading model from {args.load_path}...[/bold yellow]"
+        #     )
+
+
         if train_input.shape[0] == 0:
             rich_console.print(
                 "[bold red]Training data is empty. Skipping...[/bold red]"
