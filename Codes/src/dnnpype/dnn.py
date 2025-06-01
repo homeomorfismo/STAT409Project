@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import argparse
 import shutil
+import time
+import pathlib
 from abc import ABC
 from typing import Any, Callable, Dict, Optional, Tuple
 
@@ -32,12 +34,16 @@ import polars as pl
 import rich as r
 import rich.console as console
 import rich.progress as progress
+import orbax.checkpoint as ocp
 
 ###############################################################################
 # Globals
 ###############################################################################
 # Terminal columns
 _cols: int = shutil.get_terminal_size().columns
+_def_save_path: str = "~/models/save"
+_def_load_path: str = "~/models/load"
+# Sizes #######################################################################
 # Number of inputs, hidden layers, and outputs
 _n_inputs: int = 6
 _n_hidden: int = 2
@@ -49,6 +55,7 @@ _n_shape_parameters: int = 2
 # Number of epochs and batch size
 _n_epochs: int = 10
 _n_batch_size: int = 32
+# Control variables for the system ############################################
 # Default environment parameters
 _air_params: jnp.ndarray = jnp.array(
     [0.7354785, 1.185]
@@ -57,6 +64,7 @@ _air_params: jnp.ndarray = jnp.array(
 _unit_factor: float = 1.0
 # Default shape parameters, these define a metric (partial distribution)
 _default_shape_parameters: jnp.ndarray = jnp.array([1.0, 1.0])
+# Initialization variables ####################################################
 # Standard deviation for normal distribution
 _std_dev: float = 0.325
 # Weight for Ising number loss, greater than 1
@@ -534,7 +542,6 @@ def modified_loss(
     loss += regularization * reg_weights
 
     return loss, predicted_data
-
 
 
 ################################################################################
@@ -1139,13 +1146,18 @@ def main():
     )
 
     # 7. Run Mode
+    ckpt = ocp.StandardCheckpointer()
     if args.mode == "train":
 
-        # if args.load_path:
-        #     rich_console.print(
-        #         f"[bold yellow]Loading model from {args.load_path}...[/bold yellow]"
-        #     )
-
+        if args.load_path:
+            load_path = pathlib.Path(args.load_path)
+            rich_console.print(
+                f"[bold yellow]Loading model from {args.load_path}...[/bold yellow]"
+            )
+            abs_graph, abs_state = nnx.split(dnn_model)
+            res_state = ckpt.restore(load_path / "state", abs_state)
+            dnn_model = nnx.merge(abs_graph, res_state)
+            optimizer = nnx.Optimizer(dnn_model, optax_optimizer)
 
         if train_input.shape[0] == 0:
             rich_console.print(
@@ -1184,12 +1196,21 @@ def main():
                 batch_size=args.batch_size,
                 console=rich_console,
             )
-        elif (
-            args.mode == "train"
-        ):  # Only print if mode was train and no eval data
+        else:
             rich_console.print(
                 "[yellow]No evaluation data to evaluate.[/yellow]"
             )
+
+        if args.save_path:
+            save_path = pathlib.Path(args.save_path)
+            rich_console.print(
+                f"[bold yellow]Saving to {args.save_path}...[/bold yellow]"
+            )
+            ckpt_dir = ocp.test_utils.erase_and_create_empty(save_path)
+            _, state = nnx.split(dnn_model)
+            ckpt.save(ckpt_dir / "state", state)
+            jax.block_until_ready(state)
+            time.sleep(1)  # Ensure the save operation completes
 
     elif args.mode == "evaluate":
         # TODO: Implement model loading if args.load_path is provided
