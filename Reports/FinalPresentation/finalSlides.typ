@@ -17,7 +17,7 @@
   author: "Meghana Cyanam, Hai Nguyen, and Gabriel Pinochet-Soto",
   institute: "Portland State University", 
   date: datetime.today().display(),
-  // left-logo: image("psu-logo.png", width: logo-size), // If you have logo files
+  left-logo: image("PSU_logo_white_transparent.png", width: 10cm),
 )
 
 #pagebreak()
@@ -35,6 +35,22 @@
 + Pipe organs have been around for hundreds of years, and making them sound just right is a special job called intonation, or _voicing_.
 + The way a pipe looks and is built -- like its size, shape, and material-- can change how it sounds.
 + These details are decided first, and then the pipes are fine-tuned before being added to the organ.
+
+== Main goals
+
+#columns(2)[
+  #psu-block(title: "Ising Number as a predictor", fill-color: psu-purple)[
+    - Ideally, we would like to use *the Ising number* to predict the intonation of a pipe.
+    - Using a data-driven approach, we aim to correct the formulation of the Ising number, hopefully to integrate the flow of the wind jet in the pipe and improve the prediction of the intonation.
+  ]
+
+  #colbreak()
+
+  #psu-block(title: "Predict good distribution of partials", fill-color: psu-purple)[
+    - In general, it is desirable to have an understanding of *the distribution of the (intensity of the) partials of a pipe*.
+    - Being able to model and predict the distribution of the partials of a pipe is a key aspect of voicing.
+  ]
+]
 
 #pagebreak()
 
@@ -89,8 +105,8 @@
   Here:
   - $v$ is the velocity of the wind jet,
   - $omega$ is the frequency of the fundamental,
-  - $d$ is the diameter of the pipe,
-  - $h$ is the height of the mouth of the pipe,
+  - $d$ is the initial jet diameter,
+  - $h$ is the cut-up height of the pipe,
   - $P$ is the pressure of the wind jet, and
   - $rho$ is the density of the air.
 
@@ -121,7 +137,7 @@
       })
       #v(1cm)
     ],
-    caption:"Diagram of a transversal section of an (squared) organ pipe.",
+    caption:"Diagram of a transversal section of an (squared) organ pipe. The remaining unlabeled opening corresponds to the jet opening.",
   )
 ]
 
@@ -169,9 +185,59 @@ Thus, by assuming _the velocity from the system is known_, we can modify the Isi
 
 = Exploratory data analysis
 
-TODO:
-- Correlation matrix
-- Confirm computations are dont correctly...
+#let allOrgan = csv("../../Data/allOrgan.csv", row-type: dictionary)
+#let flowIsingData = csv("../../Data/flowIsingData.csv", row-type: dictionary)
+#let freqCutUpHeightDiam = csv("../../Data/freqCutUpHeightDiam.csv" , row-type: dictionary)
+#let accousticIntensityModIsing = csv("../../Data/accousticIntensityModIsing.csv", row-type: dictionary)
+
+#columns(2)[
+  #{
+    let nObservations = allOrgan.len()
+    let frequency = ()
+    let cutUpHeight = ()
+    let diameterToe = ()
+    for i in range(nObservations) {
+      frequency.push(float(allOrgan.at(i).frequency))
+      cutUpHeight.push(float(allOrgan.at(i).cutUpHeight))
+      diameterToe.push(float(allOrgan.at(i).diameterToe))
+    }
+  
+    figure(
+      scale(x: 130%, y: 130%)[
+        #v(1cm)
+        #lq.diagram(
+          lq.scatter(
+            frequency,
+            cutUpHeight,
+            color: diameterToe,
+            norm: t => calc.min(calc.max(t , -0.01), 0.01),
+          ),
+          xlabel: [Frequency (Hz)],
+          yscale: "log",
+          ylabel: [Cut-Up Height ($log$ m)],
+        )
+        #v(1cm)
+      ],
+      caption:"Cut-Up Height vs. Frequency, colored by Diameter Toe."
+    )
+  }
+
+  #colbreak()
+
+  #psu-alert-block(title: "Observations")[
+    - The cut-up height is *logarithmic* in the frequency.
+    - The diameter toe is *almost constant* across the observations.
+    - The data is *not very dense*, and has a bias.
+  ]
+
+  #psu-block(title: "Variability of the data", fill-color: psu-purple)[
+    We would like to see a more evenly distributed dataset, with more variability in the parameters.
+    In this way, we can train a model that is more robust to different conditions, and identify _good *and* bad_ voicing
+    patterns.
+  ]
+]
+
+//TODO here
 
 #pagebreak()
 
@@ -223,8 +289,9 @@ For installation instructions, see the
     Thus, *the distance between what the model predicts and the observed partials and Ising numbers is minimized*.
   ]
 
-  #psu-block(title: "JAX implementation")[
-    The model is implemented in #link("https://jax.readthedocs.io/en/latest/", "JAX"), a library that allows to implement different machine learning models in Python!
+  #psu-block(title: "Where to find this code", fill-color: psu-purple)[
+    Check the code in #link("https://github.com/homeomorfismo/STAT409Project", [*our GitHub repository*]).
+    There are some instructions in the `Codes/README.md` file.
   ]
 ]
 
@@ -286,3 +353,12 @@ For installation instructions, see the
 It will be convenient to:
 - Use a larger dataset, with more observations and *variability* in the parameters.
 - Concatenate _new_ observations to the previous ones, to improve the model.
+
+#pagebreak()
+
+= Final remarks
+
+== Potential further work
+
+- Purely physical approach to the computation of the intensity: we want to model the partials without creating a pipe. Using FEM or CFD methods to compute the intensity of the partials.
+- Explore flow-informed Ising number and cross-validate with the data: there are new measurements related to the opening of the channels and pallets.
