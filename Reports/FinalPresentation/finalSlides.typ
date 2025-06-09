@@ -237,7 +237,69 @@ Thus, by assuming _the velocity from the system is known_, we can modify the Isi
   ]
 ]
 
-//TODO here
+#pagebreak()
+
+#columns(2)[
+  #figure(
+    image(
+      "PP.png",
+      format: "png",
+      width: 13cm,
+    ),
+    caption: "Correlation matrix of the predictors.",
+  )
+
+  #colbreak()
+
+  #figure(
+    image(
+      "PR.png",
+      format: "png",
+      width: 13cm,
+    ),
+    caption: "Correlation matrix of the predictors and the response.",
+  )
+]
+
+// #{
+//   let corMatPredPred = csv("../../Data/CorMatPredPred.csv", row-type: dictionary)
+//   let rowPP = ()
+//   let dataPP = ()
+//   for i in range(corMatPredPred.len()) {
+//     rowPP.push(corMatPredPred.at(i).label)
+//   }
+//   for i in range(corMatPredPred.len()) {
+//     let temp = ()
+//     for j in rowPP {
+//       temp.push(float(corMatPredPred.at(i).at(j)))
+//     }
+//     dataPP.push(temp)
+//   }
+// 
+//   figure(
+//     scale(x: 130%, y: 130%)[
+//       #v(1cm)
+//       #lq.diagram(
+//         lq.colormesh(
+//           range(rowPP.len()),
+//           range(rowPP.len()),
+//           dataPP,
+//           interpolation: "pixelated",
+//         ),
+//         xlabel: [Predictors],
+//         ylabel: [Predictors],
+//       )
+//       #v(1cm)
+//     ],
+//     caption:"Correlation matrix of the predictors.",
+//   )
+// }
+// #{
+//   let corMatPredResp = csv("../../Data/CorMatPredResp.csv", row-type: dictionary)
+//   let rowPR = ()
+//   let colPR = ()
+//   let dataPR = ()
+// }
 
 #pagebreak()
 
