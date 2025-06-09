@@ -473,6 +473,38 @@ as the partials ratios prediction associated to the input \(\mathbf{x}\).
 
 \input{dnn_tikz}
 
+\subsubsection{Some implementation details}
+
+One key aspect of the implementation is the use of activation functions.
+There are different types of activation functions, and the criteria for
+choosing them is based on the design and goals of the model.
+
+We use hyperbolic tangent activation functions for the hidden layers, as they
+are zero-centered, smooth, and can help with the convergence of the model.
+\[
+    \mathsf{tanh}(x) = \frac{e^x - e^{-x}}{e^x + e^{-x}}.
+\]
+Concerning the last outputs, we want to recover the Ising number and the
+partials ratios.
+For the Ising number, we use a softplus activation function, which is defined as
+\[
+    \mathsf{softplus}(x) = \log(1 + e^x).
+\]
+This function is a smooth approximation of the ReLU function, and it is always
+non-negative, which is suitable for the Ising number prediction.
+For the partials ratios, we use a softmax activation function, which is defined
+as
+\[
+    \mathsf{softmax}(\mathbf{y})_j = \frac{e^{y_j}}{\sum_{k=1}^8 e^{y_k}},
+\]
+where \(\mathbf{y} = (y_1, \ldots, y_8)\) is the output vector of the DNN
+associated to the partials ratios.
+Notice that we require to add an \emph{extra normalization step} where we divide the
+softmax output by the maximum value of the partials ratios, so that the
+partials ratios are normalized between 0 and 1, and have the same scale as the
+observational data.
+
+
 \section{Loss function}
 
 The loss function consists of two terms: an squared error term for the
@@ -581,6 +613,65 @@ displayed on screen.
 \include{cli_screen}
 \include{cli_samples}
 \include{cli_units}
+
+\section{Prospective improvements}
+
+We would like to see more variability in the data, as the current data is 
+biased and limited --and justifiedly so, as the client has a limited number of
+material to produce the organ pipes.
+In order to learn more about the dynamics of the partials (ratios), we
+would like to see suboptimal partial ratios.
+
+Other topic of concern is the utilization of the acoustic intensity as a
+predictor of the model.
+In principle, the acoustic intensity is a measure of the sound level
+produced by the pipe --coming from the physics of the sound waves.
+This current approach might not be optimal; an attempt to correct and use
+the acoustic intensity as a response variable was made, but it impacted the
+scaling of the model.
+This last statement means to modify the model and the loss function in the
+following way: let \(\widetilde{\mathsf{DNN}}: \mathbb{R}^5 \to \mathbb{R}^{10}\)
+be the DNN model that takes five input features (the first five parameters 
+listed above), and outputs a ten-dimensional vector (the Ising number, the
+acoustic intensity, and the eight partials ratios).
+Here, $\widetilde{\mathsf{DNN}}_\mathsf{I}(\mathbf{x}) \in [0, +\infty)$ is the Ising
+number component, $\widetilde{\mathsf{DNN}}_\mathsf{A}(\mathbf{x}) \in [0, +\infty)$ is
+the acoustic intensity component, and
+$\widetilde{\mathsf{DNN}}_\mathsf{P}(\mathbf{x}) \in [0, 1]^8$ is the partials ratios
+component.
+We could modify the loss function~\eqref{eq:dnn_loss} to be
+\begin{multline}
+    \label{eq:dnn_loss_acoustic}
+    \mathscr{L}_{\widetilde{\mathsf{DNN}}}(\mathbf{W}, \mathbf{b}; \lambda) =
+    \frac{1}{N} \sum_{i=1}^N \left(
+        \lambda^2 \left( \mathsf{DNN}_\mathsf{I}(\mathbf{x}_i) - \mathsf{I}(\mathbf{x}_i) \right)^2
+        \right. \\
+        \left. + \left( \widetilde{\mathsf{DNN}}_\mathsf{A}(\mathbf{x}_i) - a_i \right)^2
+        +
+        \sum_{j=1}^8 \left( \mathsf{DNN}_\mathsf{P}(\mathbf{x}_i)_j - \mathbf{p}_{i,j} \right)^2
+    \right).
+\end{multline}
+
+Along the same lines, it would be interesting to make the current responses
+associated to the partials more physical.
+Currently (and loosely speaking), out model aims to mimic the behavior of the
+intensity and partial distribution measuring tool, while adding the Ising
+number constraint.
+Note that this artificially decouples the intensity and the partials ratios.
+Moreover, the partial distribution, as is notmalized by the maximum partial
+intensity, makes the model unable to distinguish the impact of the acoustic
+intensity on the partials ratios.
+One possible approach is to switch the last layer of the model to only employ
+a softmax activation function, and to use the acoustic intensity as a rescaling
+factor for the partials ratios: given the acoustic intensity \(A\) and the
+partials distribution \(\mathbf{p} = (p_1, \ldots, p_8)\), we could
+work and fit the \emph{physical} partials distribution
+\(A \cdot \mathbf{p} = (A p_1, \ldots, A p_8)\).
+
+Lastly, we would like to append more data in the current format we are using
+(i.e., the \texttt{csv} format).
+The current miniapp allows to reuse the models and the data, and we can extend
+it to visualize the results (in a graphical way, instead of the CLI TUI).
 
 \chapter{Generalized Additive Models and the Ising number}
 \chapterauthor{Meghana Cyanam}
