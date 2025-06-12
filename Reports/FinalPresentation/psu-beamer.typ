@@ -58,13 +58,13 @@
   // Set text properties
   set text(
     font: default-font,
-    size: 14pt,
+    size: 12pt,
     fill: psu-black
   )
   
   // Set heading styles
   show heading.where(level: 1): it => {
-    set text(size: 18pt, weight: "bold", fill: frame-title-color)
+    set text(size: 16pt, weight: "bold", fill: frame-title-color)
     set align(center)
     v(0.5em)
     it.body
@@ -74,23 +74,30 @@
   }
   
   show heading.where(level: 2): it => {
-    set text(size: 16pt, weight: "bold", fill: frame-title-color)
+    set text(size: 14pt, weight: "bold", fill: frame-title-color)
     v(0.3em)
     it.body
     v(0.2em)
+  }
+
+  show heading.where(level: 3): it => {
+    set text(size: 12pt, weight: "bold", fill: frame-title-color)
+    v(0.2em)
+    it.body
+    v(0.1em)
   }
   
   // Set list styling
   set list(marker: [•], indent: 1em)
   show list: it => {
-    set text(fill: psu-black)
+    set text(fill: psu-forest-green)
     it
   }
   
   // Set enum styling  
   set enum(indent: 1em)
   show enum: it => {
-    set text(fill: psu-black)
+    set text(fill: psu-forest-green)
     it
   }
   

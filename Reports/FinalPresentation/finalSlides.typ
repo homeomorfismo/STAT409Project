@@ -70,7 +70,7 @@
     lq.bar(freqs, goods, fill: psu-electric-green),
   )
 
-  #psu-block(title: "Good voicing")[ 
+  #psu-block(title: "Good voicing", fill-color: psu-electric-green)[
     Good voicing is when the pipe *sounds good*, and the sound of the fundamental is clear and pleasant.
     It often has a monotone decay.
   ]
@@ -86,7 +86,7 @@
     lq.bar(freqs, bads, fill: psu-red),
   )
 
-  #psu-alert-block(title: "Bad voicing")[
+  #psu-block(title: "Bad voicing", fill-color: psu-red)[
     Bad voicing is when the pipe *sounds off*, and the sound of the fundamental is not clear.
     It often has a noisy decay, and the fundamental gets _shifted_ to a different frequency.
   ]
@@ -176,7 +176,7 @@ Thus, by assuming _the velocity from the system is known_, we can modify the Isi
   Let $ v_serif("toe") = frac(A_serif("system"), A_serif("toe")) v_serif("system") $ be the velocity of the wind jet at the toe-hole of the pipe;
   then the *flow-informed Ising number* is defined as:
   $
-  sans(I)_sans("flow-informed") = frac(v_serif("system") A_serif("system"),omega A_serif("system") ) sqrt(frac(d,h^3))
+  sans(I)_sans("flow-informed") = frac(v_serif("system") A_serif("system"),omega A_serif("toe") ) sqrt(frac(d,h^3))
   = frac(A_serif("system"),omega A_serif("toe") ) sqrt(frac(2 P d,rho h^3)).
   $
 ]
