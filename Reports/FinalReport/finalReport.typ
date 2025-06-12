@@ -565,7 +565,7 @@ the parameters is not evenly distributed in the parameter space; we suggest that
 attempts to collect more data in an evenly distributed manner in the parameter space.
 We understand that this procedure may be counterintuitive --even contraproductive-- to the
 voicing process from a production point of view (as it may require constructing pipes that are not intended to be used),
-yet we believe that this would allow to hace a better understanding of the system itself.
+yet we believe that this would allow to have a better understanding of the system itself.
 
 We propose some way to integrate the new available data concerning the airflow and dimension of the wind jet system.
 In @alternatives[Appendix], we present some potential alternatives to the approach that we took; in particular,
