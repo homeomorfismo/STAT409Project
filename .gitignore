@@ -1,5 +1,6 @@
 Reports/psu_sty
 Reports/Presentation/Logos
+*.pdf
 # Created by https://www.toptal.com/developers/gitignore/api/c,cpp,python,r,python,julia
 # Edit at https://www.toptal.com/developers/gitignore?templates=c,cpp,python,r,python,julia
 
