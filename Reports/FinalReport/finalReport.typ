@@ -112,15 +112,18 @@
   )[Executive Summary]
   set align(left)
   [
-    We found some _a priori_ trends in the data that suggest a bias in the
-    measurements; we suggest that the data is not sufficient to fit larger models.
-    We present some techniques to interpret optimal partial distribution.
+    Our main tasks are to improve the Ising number formula and to
+    provide a methodology to predict the partials of an organ pipe (and/or
+    the Ising number) based on the parameters of the pipe.
+    // We present some techniques to interpret optimal partial distribution.
     Deep Neural Networks (DNN) are used to predict the partial ratios
     distribution, that take into account the airflow rate, and use the Ising
     number as a constraint.
     Finally, we propose prospective future work; we recommend the collection of
     evenly distributed data and the use of the DNN model as a _companion_ tool
     that can be enhanced with new data.
+    We note some _a priori_ trends in the data that suggest a bias in the
+    measurements; we suggest that the data is not sufficient to fit larger models.
   ]
   pagebreak()
 }
@@ -228,7 +231,7 @@ We include some appendices with additional information:
 
 #pagebreak()
 
-= Data Description and Data Analysis <dataDescription>
+= Data Description and Exploratory Data Analysis <dataDescription>
 
 In this section, we describe the data that was provided by the client and
 the observations that we made during the data analysis.
@@ -260,7 +263,7 @@ and of the system that allows the air circulation through the pipes.
 Due to time constraints, we were not able to fully explore this data, but we will
 mention some potential avenues for future work in the conclusion section.
 
-== Data analysis
+== Data exploration
 
 We first start with the process of data wrangling.
 We do not include constants or parameters that are given by the client --say,
@@ -269,14 +272,6 @@ the Ising number formula (@ising) as they are not being modified during the
 voicing process.
 Rather, we focus on the observable parameters that can be measured, as described
 above.
-Recall that these quantities are:
-- `isBourdon` -- Indicates if the pipe is a Bourdon pipe.
-- `flueDepth` -- The depth of the flue.
-- `frequency` -- The frequency of the pipe.
-- `cutUpHeight` -- The cut-up height of the pipe.
-- `diameterToe` -- The diameter of the toe.
-- `acousticIntensity` -- The acoustic intensity of the pipe.
-- `partialN` -- The $N$ th partial of the pipe.
 We assume standard units (metric system) for all the quantities.
 The remaining environmental parameters are assumed to be constant, as provided by
 the client, and are not included in the dataset.
@@ -285,10 +280,14 @@ The remaining quantities are computed under the required formulae (Ising number,
 velocities, circular areas, etc.) and are _not_ included in the dataset.
 
 We begin by computing the Ising number for each observation in the dataset;
-we correlate the predictors associated with the organ pipe parameters with themselves,
-and then, we correlate the predictors with the responses (the Ising number
-and the partials). See @corrPP and @corrPR for the correlation matrices
-of the predictors and the predictors with the response, respectively.
+we compute the correlations between the predictors associated with the organ
+pipe parameters with themselves,
+and similarly, we compute the correlations between the predictors with the responses
+(the Ising number and the partials).
+See @corrPP and @corrPR for the Spearman Rank Correlation matrix of the predictors
+and the predictors with the response, respectively.
+See @corrPP_p and @corrPR_p for the Pearson Correlation matrix of the predictors
+and the predictors with the response, respectively.
 
 We notice that `isBourdon` is not as much correlated with the other predictors, yet it
 highly correlated with `partial2`.
@@ -303,8 +302,17 @@ The Ising number does not have high correlation with the other predictors.
     format: "png",
     width: 13cm,
   ),
-  caption: "Correlation matrix of the predictors.",
+  caption: "Spearman Rank Correlation matrix of the predictors.",
 ) <corrPP>
+
+#figure(
+  image(
+    "PP_p.png",
+    format: "png",
+    width: 13cm,
+  ),
+  caption: "Pearson Correlation matrix of the predictors.",
+) <corrPP_p>
 
 #figure(
   image(
@@ -312,8 +320,17 @@ The Ising number does not have high correlation with the other predictors.
     format: "png",
     width: 13cm,
   ),
-  caption: "Correlation matrix of the predictors and the response.",
+  caption: "Spearman Rank Correlation matrix of the predictors and the response.",
 ) <corrPR>
+
+#figure(
+  image(
+    "PR_p.png",
+    format: "png",
+    width: 13cm,
+  ),
+  caption: "Pearson Correlation matrix of the predictors and the response.",
+) <corrPR_p>
 
 #{
   let allOrgan = csv("../../Data/allOrgan.csv", row-type: dictionary)
@@ -348,7 +365,20 @@ The Ising number does not have high correlation with the other predictors.
 } <cutUpHeightVsFrequency>
 
 @cutUpHeightVsFrequency shows a *strong bias* in the data, as the selection of
-the parameters is not evenly distributed in the parameter space.
+the parameters is not evenly distributed in the parameter space:
+we observe that the variability of the diamater toe and the cut-up height
+is low.
+Moreover, we would also expect to see greated variability in the cut-up height 
+--as much as the physical constraints allow, in the sense of using the same
+frequency-- so that the data covers a wider range of the parameter space.
+
+Here, _parameter space_ refers to the space of the parameters that define the
+organ pipe, such as the frequency, the cut-up height, the diameter toe, and the
+flue depth.
+This space is not necessarily a Euclidean space --i.e., it is not necessarily
+similar to $bb(R)^n$; e.g., it might not be a line, a plane, or a cube--, but it is a
+space that is defined by the parameters that define the organ pipe.
+
 In order to have a better understanding of the data, we suggest that the client
 attempts to collect _evenly distributed_ data in the parameter space.
 
@@ -378,7 +408,7 @@ partial1,partial2,partial3, partial4,partial5,partial6,partial7,partial8
 0,0.15,220.0,0.07,0.03,85.0,34.0,99.0,17.0,11.0,59.0,28.0,0.0,32.0
 ```
 
-Despite the Ising number is adimensional, it is *unit-dependent*.
+Despite the Ising number being adimensional, it is *unit-dependent*.
 Make sure to use the same units for all the data in the dataset:
 the range of "intonation" values may vary with different units.
 
@@ -390,24 +420,24 @@ In this section, we describe the methodology that we used to analyze the data
 and to build the model that predicts the Ising number and the partials of the
 pipe.
 
-== Linear regression analysis for partials distribution
-
-We used linear regression to study the relationship between the frequencies and
-their partials --which are normalized intensities.
-Three heuristic shape functions are used to fit the partials distribution:
-$
-frak(p)_sans("lin")(omega; a, b) & = a omega + b, \ 
-frak(p)_sans("exp")(omega; a, b) & = a e^omega + b, \
-frak(p)_sans("log")(omega; a, b) & = a log(omega) + b,
-$
-where $frak(p)$ is the partial (ratio), $omega$ is the frequency, and $a, b in bb(R)$ are shape
-constants for fitting the data.
-
-As the data is not evenly distributed, linear regression is not the best
-approach to fit the data.
-The _a priori_ known correlation between the second partial and the Bourdon pipes
-(see, e.g., @2012RosFle-1) suggest that fitting these *monotonic* functions 
-might not be the best approach.
+// == Linear regression analysis for partials distribution
+// 
+// We used linear regression to study the relationship between the frequencies and
+// their partials --which are normalized intensities.
+// Three heuristic shape functions are used to fit the partials distribution:
+// $
+// frak(p)_sans("lin")(omega; a, b) & = a omega + b, \ 
+// frak(p)_sans("exp")(omega; a, b) & = a e^omega + b, \
+// frak(p)_sans("log")(omega; a, b) & = a log(omega) + b,
+// $
+// where $frak(p)$ is the partial (ratio), $omega$ is the frequency, and $a, b in bb(R)$ are shape
+// constants for fitting the data.
+// 
+// As the data is not evenly distributed, linear regression is not the best
+// approach to fit the data.
+// The _a priori_ known correlation between the second partial and the Bourdon pipes
+// (see, e.g., @2012RosFle-1) suggest that fitting these *monotonic* functions 
+// might not be the best approach.
 
 == Proposed modifications to the Ising number
 
@@ -426,7 +456,8 @@ $
 
 This approach is simple, but *breaks the dimensional analysis*, as it forces the factor $frac(1,2)$ to have dimensions of the reciprocal of the airflow.
 
-More statistical analysis was performed with this proposed modification, but it was not conclusive.
+More statistical analysis was performed with this proposed modification, but it was
+demonstrated that this approach does not appropriately incorporate the airflow information
 See, e.g., @accIntVsModIsing for a plot of the acoustic intensity vs. the modified Ising number.
 
 #{
@@ -522,6 +553,7 @@ run_model \
 where `run_model` is the name of the script that runs the DNN model, `--learning_rate`
 is the initial learning rate for the model, `--epoch` is the number of epochs to
 train the model, and `--data_path` is the path to the data in `csv` format.
+See @computationalResults for more details on the computational results of the model.
 
 === Other features
 
@@ -543,11 +575,13 @@ classify_samples \
   --plot-samples
 ```
 
-== Results of the model
+#pagebreak()
+
+= Computational results <computationalResults>
 
 We have trained the model using 300 epochs, with an initial learning rate of 0.01.
 Under the provided hyperparameters (see @dnn-hyperparams), the model converged
-we report a final total average loss of \(0.0393\).
+we report a final total average loss of $0.0393$.
 Other statistics are displayed on screen upon running the model.
 A verification step on a test set of the data is performed, and the results are
 displayed on screen.
@@ -558,8 +592,31 @@ The model displays difficulties in learning the second partial distribution, acc
 
 = Conclusions <conclusions>
 
-While our findings provide some valuable insights into the correlation between the parameters defining the organ pipes
-and the Ising number, the role of airflow rate remains fairly uncertain.
+In this brief report, we have presented our findings on the organ pipe voicing problem.
+We have proposed two modifications to the Ising number formula, which take into account the airflow rate, the second
+one being more robust than the first one, as it is based on the conservation of the airflow for incompressible flows.
+A Deep Neural Network (DNN) model was trained on the data provided by the client,
+and it can be used to predict partials of the pipe and the Ising number.
+This model is not robust enough to be used as a standalone tool, but it can be used as a
+_companion_ tool that can be enhanced with new data.
+In @alternatives[Appendix], we highlight that the inclusion of the airflow rate in the model
+could be a promising avenue for future work.
+In @dnn_implementation[Appendix], we present some implementation details of the DNN model that we used to
+predict the Ising number and the partials of the pipe.
+
+We propose some way to integrate the new available data concerning the airflow and dimension of the wind jet system:
+one main concern in order to fully exploit this new information is to ensure _where_ the airflow rate is measured,
+and what openings (pallet, toe-hole, etc.) are associated to which pipe (and frequency).
+There is not a unique way to algebraically integrate the airflow rate in the Ising number formula, thus there might be
+other ways to reformulate the Ising number that take into account the airflow rate.
+
+In @alternatives[Appendix], we present some potential alternatives to the approach that we took; in particular,
+the modification to the Ising number utilizing conservation of the airflow seems to be the most promising one to pursue,
+provided that the airflow rates are available.
+
+While our findings confirm the correlation between the parameters defining the organ pipes
+and the Ising number and some theoretical expectations (e.g., the correlation between the second partial and
+the Bourdon pipes), the role of airflow rate remains fairly uncertain.
 @cutUpHeightVsFrequency shows a strong bias in the data, as the selection of
 the parameters is not evenly distributed in the parameter space; we suggest that the client
 attempts to collect more data in an evenly distributed manner in the parameter space.
@@ -567,20 +624,9 @@ We understand that this procedure may be counterintuitive --even contraproductiv
 voicing process from a production point of view (as it may require constructing pipes that are not intended to be used),
 yet we believe that this would allow to have a better understanding of the system itself.
 
-We propose some way to integrate the new available data concerning the airflow and dimension of the wind jet system.
-In @alternatives[Appendix], we present some potential alternatives to the approach that we took; in particular,
-the modification to the Ising number utilizing conservation of the airflow seems to be the most promising one to pursue,
-provided that the airflow rates are available.
-
-Finally, we present a Deep Neural Network (DNN) model.
-The model is trained on the data provided by the client, and it can be used to predict the Ising number
-and the partials of the pipe.
-This model is not robust enough to be used as a standalone tool, but it can be used as a
-_companion_ tool that can be enhanced with new data.
-In @alternatives[Appendix], we highlight that the inclusion of the airflow rate in the model
-could be a promising avenue for future work.
-In @dnn_implementation[Appendix], we present some implementation details of the DNN model that we used to
-predict the Ising number and the partials of the pipe.
+We consider that the client should accumulate data in a systematic way --from the production of new pipes, in a organized
+spreadsheet, with standardized units-- that will allow to be fed into the current model, or any future model that may
+be developed.
 
 //------------------------------------------------------------------------------
 
