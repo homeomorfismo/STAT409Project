@@ -10,7 +10,7 @@ Provides:
     fibers." SIAM Journal on Scientific Computing 47, no. 1 (2025): B108-B130.
 
 [2] Vandenberge, Pieter, Jay Gopalakrishnan, and Jacob Grosek.
-    "Sensitivity of confinement losses in optical fibers to modeling approach." 
+    "Sensitivity of confinement losses in optical fibers to modeling approach."
     Optics Express 31, no. 16 (2023): 26735-26756.
 
 [3] Vaziri Astaneh, Ali, Brendan Keith, and Leszek Demkowicz.
@@ -218,3 +218,23 @@ if __name__ == "__main__":
     # Test Cartesian PML
     cartesian_pml_func = cartesian_pml(alpha, pml_begin, pml_end)
     print(f"Cartesian PML function: {cartesian_pml_func}\n")
+
+    from netgen.geom2d import unit_square
+
+    mesh = ng.Mesh(unit_square.GenerateMesh(maxh=0.1))
+
+    # Test NGSolve radial PML
+    radial_pml_ng, complete_pml_ng, radial_pml_dt_ng, complete_pml_dt_ng = (
+        radial_pml_ng(alpha, pml_begin, pml_end)
+    )
+    ng.Draw(radial_pml_ng, mesh)
+    ng.Draw(complete_pml_ng, mesh)
+    ng.Draw(radial_pml_dt_ng, mesh)
+    ng.Draw(complete_pml_dt_ng, mesh)
+
+    # Test NGSolve Cartesian PML
+    cartesian_pml_ng = cartesian_pml_ng(alpha, pml_begin, pml_end)
+    for i, pml_term in enumerate(cartesian_pml_ng):
+        ng.Draw(pml_term, mesh)
+        print(f"Cartesian PML term {i}: {pml_term}")
+    print("Done!")
